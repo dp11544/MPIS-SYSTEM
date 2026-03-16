@@ -1,0 +1,261 @@
+:root {
+    /* Police / Government Theme Palette */
+    --bg-primary: #0a192f;
+    /* Deep Navy */
+    --bg-secondary: #112240;
+    /* Light Navy */
+    --bg-tertiary: #233554;
+    /* Lighter Navy for Cards/Modals */
+
+    --text-primary: #e6f1ff;
+    /* White/Silver */
+    --text-secondary: #8892b0;
+    /* Muted Blue-Grey */
+    --text-accent: #64ffda;
+    /* Cyber/Tech Teal */
+
+    --brand-blue: #007bff;
+    /* Standard Police Blue */
+    --brand-gold: #ffd700;
+    /* Badge Gold */
+
+    --status-alert: #ff4d4d;
+    /* Red */
+    --status-success: #28a745;
+    /* Green */
+    --status-warning: #ffc107;
+    /* Yellow */
+
+    --border-color: #233554;
+    --glass-bg: rgba(17, 34, 64, 0.7);
+    --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Fira Code', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--text-accent);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.text-gradient {
+    background: linear-gradient(90deg, var(--text-primary), var(--text-accent));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+
+/* Toast Notification Styles */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast-message {
+    display: flex;
+    align-items: center;
+    min-width: 300px;
+    padding: 16px;
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-lg);
+    border-left: 5px solid transparent;
+    animation: slideIn 0.3s ease forwards;
+}
+
+.toast-success {
+    border-left-color: var(--status-success);
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid var(--status-success);
+}
+
+.toast-error {
+    border-left-color: var(--status-alert);
+    background: rgba(255, 77, 77, 0.1);
+    border: 1px solid var(--status-alert);
+}
+
+.toast-warning {
+    border-left-color: var(--status-warning);
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid var(--status-warning);
+}
+
+.toast-info {
+    border-left-color: var(--text-accent);
+    background: rgba(100, 255, 218, 0.1);
+    border: 1px solid var(--text-accent);
+}
+
+.toast-icon {
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.toast-text {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.toast-close {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    margin-left: 8px;
+    transition: color 0.2s;
+}
+
+.toast-close:hover {
+    color: var(--text-primary);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* WebSocket Alert Glow Animation */
+@keyframes pulseGlow {
+    0% {
+        box-shadow: 0 0 5px var(--status-alert), 0 0 10px var(--status-alert);
+        border-color: var(--status-alert);
+    }
+
+    50% {
+        box-shadow: 0 0 20px var(--status-alert), 0 0 30px var(--status-alert);
+        border-color: #fff;
+    }
+
+    100% {
+        box-shadow: 0 0 5px var(--status-alert), 0 0 10px var(--status-alert);
+        border-color: var(--status-alert);
+    }
+}
+
+.alert-pulse-glow {
+    animation: pulseGlow 1.5s infinite;
+    background: rgba(255, 77, 77, 0.15) !important;
+}
+
+/* NEW UI REDESIGN ANIMATIONS AND UTILITIES */
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+        box-shadow: 0 0 12px currentColor;
+    }
+
+    100% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Scrollbar styling for feed panels */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}

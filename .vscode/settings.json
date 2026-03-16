@@ -1,0 +1,32 @@
+{
+    "python.defaultInterpreterPath": "C:\\Users\\dp115\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
+    "python.languageServer": "Pylance",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/ai-engine",
+        "C:\\Users\\dp115\\AppData\\Local\\Programs\\Python\\Python310\\Lib\\site-packages"
+    ],
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    "python.analysis.useLibraryCodeForTypes": true,
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none",
+        "reportMissingModuleSource": "none",
+        "reportAttributeAccessIssue": "none",
+        "reportGeneralTypeIssues": "none",
+        "reportOptionalMemberAccess": "none",
+        "reportArgumentType": "none",
+        "reportReturnType": "none",
+        "reportUndefinedVariable": "none",
+        "reportOperatorIssue": "none",
+        "reportIndexIssue": "none",
+        "reportCallIssue": "none",
+        "reportUnknownMemberType": "none",
+        "reportUnknownVariableType": "none",
+        "reportUnknownArgumentType": "none"
+    },
+    "pyre2.enabled": false,
+    "python.linting.enabled": false,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": false,
+    "python.linting.mypyEnabled": false
+}

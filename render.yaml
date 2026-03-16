@@ -1,0 +1,31 @@
+services:
+  # Spring Boot Backend
+  - type: web
+    name: mpis-backend
+    env: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: SPRING_DATA_MONGODB_URI
+        sync: false # Set this in Render Dashboard (MongoDB Atlas URI)
+      - key: MPIS_AI_ENGINE_URL
+        fromService:
+          type: web
+          name: mpis-ai-engine
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: MPIS_JWT_SECRET
+        sync: false
+        generateValue: true
+
+  # Python AI Engine
+  - type: web
+    name: mpis-ai-engine
+    env: docker
+    dockerContext: ./ai-engine
+    dockerfilePath: ./ai-engine/Dockerfile
+    envVars:
+      - key: MPIS_BACKEND_URL
+        fromService:
+          type: web
+          name: mpis-backend
+          envVarKey: RENDER_EXTERNAL_URL

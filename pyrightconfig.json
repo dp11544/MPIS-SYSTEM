@@ -1,0 +1,20 @@
+{
+  "pythonVersion": "3.10",
+  "pythonPlatform": "Windows",
+  "pythonPath": "C:\\Users\\dp115\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
+  "typeCheckingMode": "off",
+  "extraPaths": [
+    "ai-engine",
+    "C:\\Users\\dp115\\AppData\\Local\\Programs\\Python\\Python310\\Lib\\site-packages"
+  ],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportGeneralTypeIssues": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportArgumentType": "none",
+  "reportReturnType": "none",
+  "reportUndefinedVariable": "none",
+  "reportUnknownMemberType": "none",
+  "useLibraryCodeForTypes": true
+}

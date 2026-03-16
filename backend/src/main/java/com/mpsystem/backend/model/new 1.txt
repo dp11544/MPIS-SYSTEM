@@ -1,0 +1,50 @@
+🔒 MODULE NAME (Use this in documentation)
+
+Secure Law-Enforcement Authorization Module (SLAM)
+Don’t call it “Login System”. That sounds weak.
+
+1️⃣ Actors (Very Important for Viva)
+✅ Super Admin (Trusted Authority)
+
+Creates police user accounts
+
+Disables / locks accounts
+
+Never logs into surveillance dashboards
+
+✅ Police Officer (User)
+
+Logs in
+
+Views alerts, evidence, system data
+
+Cannot create accounts
+
+Say this clearly if asked.
+
+2️⃣ Credential Provisioning Flow (FINAL, NO CHANGES)
+Step A — Admin creates officer account
+
+One-time backend operation
+
+Stored data:
+
+Batch ID
+
+Mobile number
+
+Temporary password (hashed)
+
+Status = RESET_REQUIRED
+
+📌 Officer cannot skip password reset
+
+Step B — First login (mandatory reset)
+
+Officer enters:
+
+Batch ID
+
+Temporary password
+
+Backend response:

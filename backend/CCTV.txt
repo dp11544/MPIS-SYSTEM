@@ -1,0 +1,313 @@
+import cv2
+import requests
+import time
+import numpy as np
+import threading
+from flask import Flask, Response
+from flask_cors import CORS
+import os
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | CCTV | %(levelname)s | %(message)s")
+logger = logging.getLogger("CCTV")
+
+# ==============================
+# INTERNAL MODULES (FINAL)
+# ==============================
+# Assuming these modules exist in your project structure
+# If running from ai-engine root, ensure PYTHONPATH is set
+try:
+    from core.ai_pipeline import AIPipeline
+    from matching.matcher import FaceMatcher
+except ImportError:
+    # Fallback for direct execution if needed, though PYTHONPATH is preferred
+    import sys
+    import os
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    from core.ai_pipeline import AIPipeline
+    from matching.matcher import FaceMatcher
+
+# =====================================================
+# CONFIG
+# =====================================================
+AI_ENGINE_URL = os.getenv("AI_ENGINE_URL", "http://localhost:5000/extract-embedding")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8080/api/realtime/alert")
+HEARTBEAT_URL = os.getenv("HEARTBEAT_URL", "http://localhost:8080/api/cameras/heartbeat")
+
+# RAISED THRESHOLD: 0.60 -> 0.75 to reduce false positives
+SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.75"))
+# Minimum margin between best and second-best match to avoid ambiguity
+UNCERTAINTY_MARGIN = float(os.getenv("UNCERTAINTY_MARGIN", "0.08"))
+
+CAMERA_ID = "CAM_01"
+CAMERA_NAME = os.getenv("CAMERA_NAME", "Main Entrance Camera")
+CAMERA_LOCATION = os.getenv("CAMERA_LOCATION", "Building A - Entrance")
+CAMERA_ZONE = os.getenv("CAMERA_ZONE", "Zone-Alpha")
+CAMERA_LATITUDE = float(os.getenv("CAMERA_LATITUDE", "17.3850"))
+CAMERA_LONGITUDE = float(os.getenv("CAMERA_LONGITUDE", "78.4867"))
+HEARTBEAT_INTERVAL = 10  # seconds
+
+REQUEST_INTERVAL_SECONDS = 1  # throttle (1 req/sec)
+
+# Flask App for Streaming
+app = Flask(__name__)
+CORS(app)  # Enable CORS for frontend access
+
+# Global Camera Object
+camera = None
+lock = threading.Lock()
+
+# =====================================================
+# HEARTBEAT SENDER
+# =====================================================
+def send_heartbeat():
+    """Send camera heartbeat to backend every HEARTBEAT_INTERVAL seconds."""
+    payload = {
+        "cameraId": CAMERA_ID,
+        "name": CAMERA_NAME,
+        "location": CAMERA_LOCATION,
+        "zone": CAMERA_ZONE,
+        "description": f"AI-powered surveillance camera at {CAMERA_LOCATION}",
+        "latitude": CAMERA_LATITUDE,
+        "longitude": CAMERA_LONGITUDE
+    }
+    while True:
+        try:
+            response = requests.post(
+                HEARTBEAT_URL,
+                json=payload,
+                timeout=3,
+                headers={"Content-Type": "application/json"}
+            )
+            if response.status_code == 200:
+                logger.debug(f"💓 Heartbeat sent for {CAMERA_ID}")
+            else:
+                logger.warning(f"⚠️ Heartbeat failed: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"⚠️ Heartbeat error: {e}")
+        
+        time.sleep(HEARTBEAT_INTERVAL)
+
+# Start heartbeat thread
+heartbeat_thread = threading.Thread(target=send_heartbeat, daemon=True)
+heartbeat_thread.start()
+logger.info(f"💓 Heartbeat thread started for camera {CAMERA_ID}")
+
+# =====================================================
+# MULTI-PERSON DATABASE (SIMULATED)
+# =====================================================
+KNOWN_PERSONS = {
+    "P001": {
+        "name": "Person One",
+        "embedding": np.random.rand(128)
+    },
+    "P002": {
+        "name": "Person Two",
+        "embedding": np.random.rand(128)
+    },
+    "P003": {
+        "name": "Person Three",
+        "embedding": np.random.rand(128)
+    }
+}
+
+# Normalize embeddings
+for p in KNOWN_PERSONS.values():
+    p["embedding"] = p["embedding"] / np.linalg.norm(p["embedding"])
+
+
+class VideoCamera:
+    def __init__(self):
+        self.video = cv2.VideoCapture(0)
+        self.use_mock = False
+        self.mock_frame_count = 0
+        if not self.video.isOpened():
+            print("❌ Cannot open camera. Falling back to MOCK mode.")
+            self.video = None
+            self.use_mock = True
+
+        try:
+            from vision.face_detector import FaceDetector
+        except ImportError:
+            import sys
+            sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+            from vision.face_detector import FaceDetector
+            
+        self.face_detector = FaceDetector(use_dnn=True)
+        
+        self.pipeline = AIPipeline(
+            backend_url=BACKEND_URL,
+            camera_id=CAMERA_ID
+        )
+        self.matcher = FaceMatcher(KNOWN_PERSONS)
+        self.last_request_time = 0
+
+    def __del__(self):
+        if self.video:
+            self.video.release()
+
+    def get_frame(self):
+        if self.use_mock:
+            self.mock_frame_count += 5
+            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(frame, "MOCK CCTV - AI ACTIVE", (100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            
+            x_offset = self.mock_frame_count % 400
+            faces = [(100 + x_offset, 150, 100, 100)]
+            
+            for (x, y, w, h) in faces:
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                
+            current_time = time.time()
+            # Send an alert every 5 seconds instead of 1 second to avoid spamming the UI too fast
+            if current_time - self.last_request_time >= 5.0:
+                self.last_request_time = current_time
+                pid = "P001"
+                pname = "Person One"
+                similarity = 0.95
+                
+                logger.info(f"🎯 MOCK MATCH CHECK | person={pname} | similarity={round(similarity, 3)}")
+                self.pipeline.process_match(
+                      person_id=pid,
+                      person_name=pname,
+                      similarity=similarity
+                )
+                logger.info(f"🚨 MOCK ALERT SENT | person={pid} | similarity={round(similarity, 3)}")
+            
+            ret, jpeg = cv2.imencode('.jpg', frame)
+            return jpeg.tobytes()
+
+        if not self.video:
+            return None
+
+        ret, frame = self.video.read()
+        if not ret:
+            return None
+
+        # Point 6: Early Throttling
+        current_time = time.time()
+        if current_time - self.last_request_time < REQUEST_INTERVAL_SECONDS:
+            ret, jpeg = cv2.imencode('.jpg', frame)
+            return jpeg.tobytes()
+
+        # Point 6: Limit Resolution Before Processing
+        h, w = frame.shape[:2]
+        if w > 640:
+            scale = 640 / w
+            frame = cv2.resize(frame, (640, int(h * scale)))
+
+        # Point 1: Robust Detection
+        faces = self.face_detector.detect(frame)
+
+        best_match_result = None
+        best_bbox = None
+
+        # Process all detected faces and find the best confident match
+        for (x, y, w_box, h_box) in faces:
+            cv2.rectangle(frame, (x, y), (x + w_box, y + h_box), (0, 255, 0), 2)
+            face_img = frame[y:y + h_box, x:x + w_box]
+            
+            if face_img.size == 0:
+                continue
+
+            # Skip tiny faces (unreliable)
+            if w_box < 40 or h_box < 40:
+                logger.debug(f"Skipping small face: {w_box}x{h_box}")
+                continue
+
+            _, img_encoded = cv2.imencode(".jpg", face_img)
+
+            try:
+                response = requests.post(
+                    AI_ENGINE_URL,
+                    files={"image": img_encoded.tobytes()},
+                    timeout=2.0 
+                )
+
+                if response.status_code == 200:
+                    payload = response.json()
+                    
+                    if payload.get("facesDetected", 1) == 0:
+                        continue
+                        
+                    embedding = np.array(payload["embedding"])
+                    
+                    # Use enhanced matching with Top-2 comparison
+                    match_result = self.matcher.match_with_confidence(embedding)
+                    
+                    # Log all match attempts for debugging
+                    logger.debug(
+                        f"🎯 MATCH CHECK | face=({x},{y},{w_box},{h_box}) | "
+                        f"result={match_result.status} | person={match_result.person_name} | "
+                        f"sim={match_result.similarity:.4f} | margin={match_result.margin:.4f}"
+                    )
+
+                    # Only consider CONFIDENT matches (not UNCERTAIN)
+                    if match_result.is_confident():
+                        if best_match_result is None or match_result.similarity > best_match_result.similarity:
+                            best_match_result = match_result
+                            best_bbox = (x, y)
+                    elif match_result.status == "UNCERTAIN_MATCH":
+                        # Log uncertainty but don't trigger alert
+                        logger.warning(
+                            f"⚠️ UNCERTAIN: {match_result.person_name} "
+                            f"(sim={match_result.similarity:.4f}, 2nd={match_result.second_best_similarity:.4f})"
+                        )
+
+            except requests.exceptions.Timeout:
+                logger.warning("⚠️ AI Engine Timeout (>2.0s) - Dropping frame but keeping CCTV alive")
+            except requests.exceptions.ConnectionError:
+                logger.warning("⚠️ AI Engine Offline - Unable to connect. Retrying on next frame...")
+            except Exception as e:
+                logger.warning(f"⚠️ CCTV generic error: {e}")
+
+        # Dispatch only for CONFIDENT matches above threshold
+        if best_match_result and best_match_result.is_confident() and best_match_result.similarity >= SIMILARITY_THRESHOLD:
+            logger.info(
+                f"🚨 ALERT SENT | person={best_match_result.person_id} | "
+                f"sim={best_match_result.similarity:.4f} | margin={best_match_result.margin:.4f}"
+            )
+            
+            label = f"{best_match_result.person_name} : {best_match_result.similarity:.2f}"
+            if best_bbox:
+                x, y = best_bbox
+                cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+            self.pipeline.process_match(
+                person_id=best_match_result.person_id,
+                person_name=best_match_result.person_name,
+                similarity=float(best_match_result.similarity)
+            )
+
+        # Update absolute throttle cycle
+        self.last_request_time = current_time
+
+        # Encode frame for streaming
+        ret, jpeg = cv2.imencode('.jpg', frame)
+        return jpeg.tobytes()
+
+
+def generate(camera):
+    while True:
+        with lock:
+            if camera is None:
+                break
+            frame = camera.get_frame()
+            if frame is None:
+                continue
+            
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+
+@app.route('/video_feed')
+def video_feed():
+    global camera
+    if camera is None:
+        camera = VideoCamera()
+    return Response(generate(camera),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+if __name__ == '__main__':
+    # Run on port 5001 to avoid conflict with AI Engine on 5000
+    print("CCTV Streamer running at http://localhost:5001/video_feed")
+    app.run(host='0.0.0.0', port=5001, debug=False, threaded=True)

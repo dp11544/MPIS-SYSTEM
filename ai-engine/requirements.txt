@@ -1,0 +1,8 @@
+numpy==1.26.4
+opencv-python==4.10.0.84
+insightface==0.7.3
+onnxruntime==1.17.3
+flask==3.0.3
+flask-limiter==3.6.0
+requests==2.32.3
+scipy==1.11.4

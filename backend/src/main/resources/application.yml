@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: backend
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/mpis_db}
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: 8080
+
+# Demo Mode Config
+otp:
+  demo-mode: true
+  expiration-seconds: 130
+
+# MPIS Production Observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: ALWAYS
+    prometheus:
+      enabled: true
+
+# Centralized Business Logic Configuration
+mpis:
+  ai:
+    # Must match AI Engine SIMILARITY_THRESHOLD (0.65)
+    similarity-threshold: 0.65
+    engine-url: ${MPIS_AI_ENGINE_URL:http://127.0.0.1:5000}
+  cache:
+    dedup-window-seconds: 5
+  jwt:
+    # PRODUCTION: Use environment variable MPIS_JWT_SECRET
+    # Current value is for development only
+    secret: "${MPIS_JWT_SECRET:abcefg1234567890mnopqrstuvwxyzABCEFG1234567890MNOPQRS}"
+    expiration-ms: 86400000  # 24 hours

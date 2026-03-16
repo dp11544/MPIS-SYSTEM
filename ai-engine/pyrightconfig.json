@@ -1,0 +1,23 @@
+{
+  "pythonVersion": "3.10",
+  "pythonPlatform": "Windows",
+  "pythonPath": "C:\\Users\\dp115\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
+  "venvPath": ".",
+  "include": [
+    "."
+  ],
+  "extraPaths": [
+    ".",
+    "C:\\Users\\dp115\\AppData\\Local\\Programs\\Python\\Python310\\Lib\\site-packages"
+  ],
+  "typeCheckingMode": "off",
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportGeneralTypeIssues": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportArgumentType": "none",
+  "reportReturnType": "none",
+  "useLibraryCodeForTypes": true,
+  "stubPath": ""
+}

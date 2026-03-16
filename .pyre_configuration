@@ -1,0 +1,10 @@
+{
+  "source_directories": [],
+  "exclude": [
+    "ai-engine/.*\\.py",
+    ".*\\.py"
+  ],
+  "search_path": [],
+  "ignore_all_errors": true,
+  "strict": false
+}

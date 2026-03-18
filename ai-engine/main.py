@@ -22,17 +22,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ---------------- Flask App (CRITICAL) ----------------
+# ---------------- Flask App (MANDATORY) ----------------
 app = Flask(__name__)
 
 
-# ---------------- Lazy Init ----------------
+# ---------------- Global State ----------------
 engine = None
 db_loader = None
 matcher = None
 cam_manager = None
 
 
+# ---------------- Init Function ----------------
 def init_system():
     global engine, db_loader, matcher, cam_manager
 
@@ -41,7 +42,7 @@ def init_system():
         engine = get_engine()
 
     if db_loader is None:
-        logger.info("[INIT] Loading DB...")
+        logger.info("[INIT] Loading database...")
         db_loader = DatabaseLoader()
         db_loader.load()
         db_loader.start_refresh_thread()

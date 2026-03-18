@@ -22,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ---------------- Flask App (MANDATORY) ----------------
+# ---------------- Flask App ----------------
 app = Flask(__name__)
 
 
@@ -63,11 +63,9 @@ def init_system():
             logger.info("[CAMERA DISABLED]")
 
 
-# ---------------- Register Routes ----------------
-@app.before_first_request
-def setup():
-    init_system()
-    api_server.register_routes(app, engine, db_loader, matcher, cam_manager)
+# ---------------- INIT + REGISTER ROUTES (FIXED) ----------------
+init_system()
+api_server.register_routes(app, engine, db_loader, matcher, cam_manager)
 
 
 # ---------------- Health ----------------

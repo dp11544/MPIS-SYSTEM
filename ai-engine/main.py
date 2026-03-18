@@ -62,9 +62,6 @@ def _parse_cameras():
         except ValueError:
             parsed_sources.append(s)
 
-    if len(cam_ids) < len(parsed_sources):
-        logger.warning("[CONFIG] Not enough camera IDs provided")
-
     while len(cam_ids) < len(parsed_sources):
         cam_ids.append(f"CAM_{len(cam_ids)+1:02d}")
 
@@ -78,15 +75,11 @@ def _parse_cameras():
 class SystemHealthMonitor(threading.Thread):
 
     def __init__(self, db_loader, cam_manager):
-
         super().__init__(daemon=True)
-
         self.db_loader = db_loader
         self.cam_manager = cam_manager
-
         self._running = threading.Event()
         self._running.set()
-
         self.start_time = time.time()
 
     def run(self):
@@ -94,9 +87,7 @@ class SystemHealthMonitor(threading.Thread):
         while self._running.is_set():
 
             try:
-
                 uptime = int(time.time() - self.start_time)
-
                 db_stats = self.db_loader.get_stats()
                 cam_stats = self.cam_manager.get_stats()
 
@@ -200,10 +191,10 @@ def main():
     db_loader.start_refresh_thread()
 
     # -----------------------------------------------------
-    # STEP 4: Initialize matcher, cameras, API
+    # STEP 4: Initialize matcher + API
     # -----------------------------------------------------
 
-    logger.info("[STEP 4/5] Starting API server and cameras")
+    logger.info("[STEP 4/5] Starting API server")
 
     matcher = FaceMatcher()
 
@@ -217,20 +208,24 @@ def main():
     for source, cam_id in cameras:
         cam_manager.add_camera(source=source, camera_id=cam_id)
 
-    # start API server
     api_server.start_server(engine, db_loader, matcher, cam_manager)
 
     logger.info("[API SERVER READY] http://127.0.0.1:5000")
 
     # -----------------------------------------------------
-    # STEP 5: Start cameras
+    # STEP 5: CAMERA MODE (FIXED)
     # -----------------------------------------------------
 
-    logger.info("[STEP 5/5] Starting %d camera(s)", len(cameras))
+    ENABLE_CAMERA = os.environ.get("ENABLE_CAMERA", "true").lower() == "true"
 
-    cam_manager.start_all()
+    logger.info("[STEP 5/5] Camera Mode Check")
 
-    logger.info("[CAMERAS RUNNING]")
+    if ENABLE_CAMERA:
+        logger.info("[CAMERA MODE] ENABLED — starting %d camera(s)", len(cameras))
+        cam_manager.start_all()
+        logger.info("[CAMERAS RUNNING]")
+    else:
+        logger.info("[CAMERA MODE] DISABLED — API only mode")
 
     # -----------------------------------------------------
     # Health monitor

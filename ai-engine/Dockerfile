@@ -20,4 +20,4 @@ COPY . .
 EXPOSE 5000
 
 # Start the AI Engine
-CMD ["python", "main.py"]
+CMD ["python", "app.py"]

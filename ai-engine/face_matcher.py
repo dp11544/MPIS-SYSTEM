@@ -82,6 +82,7 @@ class FaceMatcher:
 
         t0 = time.monotonic()
 
+        # Validate input embedding
         if not isinstance(embedding, np.ndarray) or embedding.shape != (EMBEDDING_DIM,):
             logger.warning(
                 "[FACE MATCHER] Invalid query embedding shape=%s",
@@ -90,9 +91,14 @@ class FaceMatcher:
             return self._no_match()
 
         if not database:
+            logger.warning("[FACE MATCHER] Empty database")
             return self._no_match()
 
         scores: List[Tuple[str, str, float]] = []
+
+        # ------------------------------------------------------
+        # CORE MATCH LOOP (FIXED)
+        # ------------------------------------------------------
 
         for person in database:
 
@@ -107,6 +113,7 @@ class FaceMatcher:
 
             for stored_emb in emb_list:
 
+                # Safety checks
                 if not isinstance(stored_emb, np.ndarray):
                     continue
 
@@ -116,14 +123,12 @@ class FaceMatcher:
                 if not np.all(np.isfinite(stored_emb)):
                     continue
 
-                # normalize stored embedding if needed
-                norm = float(np.linalg.norm(stored_emb))
-                if norm == 0:
-                    continue
-
-                stored_emb = stored_emb / norm
+                # ❗ DO NOT NORMALIZE AGAIN (already normalized in DB loader)
 
                 score = float(np.dot(embedding, stored_emb))
+
+                # 🔥 DEBUG (CRITICAL)
+                print(f"[DEBUG] {name} similarity = {score:.4f}")
 
                 if score > best_score:
                     best_score = score
@@ -132,8 +137,10 @@ class FaceMatcher:
                 scores.append((pid, name, best_score))
 
         if not scores:
+            logger.warning("[FACE MATCHER] No valid scores computed")
             return self._no_match()
 
+        # Sort by highest similarity
         scores.sort(key=lambda t: (-t[2], t[1]))
 
         top_id, top_name, top_score = scores[0]
@@ -150,7 +157,12 @@ class FaceMatcher:
         self._match_count += 1
         self._total_latency_ms += latency_ms
 
+        # ------------------------------------------------------
+        # DECISION LOGIC
+        # ------------------------------------------------------
+
         if top_score < self.threshold:
+            logger.info(f"[FACE MATCHER] NO MATCH (score={top_score:.4f})")
             return MatchResult(
                 status=NO_MATCH,
                 person_id=None,
@@ -164,6 +176,7 @@ class FaceMatcher:
             )
 
         if gap < self.margin:
+            logger.info(f"[FACE MATCHER] UNCERTAIN MATCH ({top_name})")
             return MatchResult(
                 status=UNCERTAIN_MATCH,
                 person_id=top_id,

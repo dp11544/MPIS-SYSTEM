@@ -1,202 +1,134 @@
 """
 config.py — Centralized production configuration for MPIS AI Engine.
-
-All tunable constants are defined here in clearly-labelled sections.
-No values are hardcoded in other modules — always import from this file.
-
-Sections:
-    MODEL_SETTINGS          — InsightFace model parameters
-    SIMILARITY_SETTINGS     — Matching thresholds and decision margins
-    TRACKING_SETTINGS       — Multi-frame tracker timing and cooldowns
-    CAMERA_SETTINGS         — Stream acquisition and FPS control
-    DATABASE_SETTINGS       — Backend fetch and refresh parameters
-    THREAD_SETTINGS         — Threading behaviour across the engine
-    API_SETTINGS            — Flask server configuration
-    ALERT_SETTINGS          — Alert payload metadata and retry policy
-    LOGGING_SETTINGS        — Log level, format, and date format
-    HEALTH_CHECK_SETTINGS   — System health monitor intervals
 """
 
 import os
 import sys
-
 # ─────────────────────────────────────────────────────────────────────────────
 # BACKEND INTEGRATION
 # ─────────────────────────────────────────────────────────────────────────────
 
-BACKEND_URL                  = os.environ.get("MPIS_BACKEND_URL", "http://localhost:8080")
-BACKEND_EMBEDDINGS_URL       = f"{BACKEND_URL}/api/persons/embeddings"
-BACKEND_ALERT_URL            = f"{BACKEND_URL}/api/realtime/alert"
+BACKEND_URL = os.environ.get("MPIS_BACKEND_URL")
+
+# 🔴 HARD FAIL if not set (no silent bugs)
+if not BACKEND_URL:
+    raise ValueError("❌ MPIS_BACKEND_URL is NOT set. Fix your environment variable.")
+
+# 🔴 Warn if using localhost (almost always wrong in your case)
+if "localhost" in BACKEND_URL or "127.0.0.1" in BACKEND_URL:
+    print("⚠️ WARNING: Using localhost backend. This is likely incorrect.", file=sys.stderr)
+
+BACKEND_EMBEDDINGS_URL = f"{BACKEND_URL}/api/persons/embeddings"
+BACKEND_ALERT_URL      = f"{BACKEND_URL}/api/realtime/alert"
+
+# ✅ DEBUG PRINTS (DO NOT REMOVE until system is stable)
+print(f"[CONFIG] MPIS_BACKEND_URL = {os.environ.get('MPIS_BACKEND_URL')}")
+print(f"[CONFIG] BACKEND_URL = {BACKEND_URL}")
+print(f"[CONFIG] EMBEDDINGS_URL = {BACKEND_EMBEDDINGS_URL}")
+print(f"[CONFIG] ALERT_URL = {BACKEND_ALERT_URL}")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MODEL SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# InsightFace model variant; "buffalo_l" = best accuracy (large model)
-MODEL_NAME                   = "buffalo_l"
+MODEL_NAME            = "buffalo_l"
+MODEL_USED            = "InsightFace-buffalo_l"
+ALGORITHM_VERSION     = "v2.1"
 
-# Human-readable label used in alert payloads and API responses
-MODEL_USED                   = "InsightFace-buffalo_l"
-
-# Algorithm version tag — bump this when matching logic changes
-ALGORITHM_VERSION            = "v2.1"
-
-# All face embeddings produced by buffalo_l are exactly 512-dimensional
-EMBEDDING_DIM                = 512
-
-# Internal detection resolution passed to app.prepare(); 640×640 is standard
-DETECTION_INPUT_SIZE         = (640, 640)
-
-# ONNX execution provider — set to "CUDAExecutionProvider" for GPU inference
-ONNX_PROVIDER               = "CPUExecutionProvider"
+EMBEDDING_DIM         = 512
+DETECTION_INPUT_SIZE  = (640, 640)
+ONNX_PROVIDER         = "CPUExecutionProvider"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIMILARITY SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Cosine similarity below this value → NO_MATCH (no identification attempted)
-SIMILARITY_THRESHOLD         = 0.65
-
-# Gap between top-1 and top-2 scores below this → UNCERTAIN_MATCH
-# Prevents misidentification when two people have similar embeddings
-UNCERTAINTY_MARGIN           = 0.10
-
-# Maximum valid similarity (cosine can only reach 1.0 for identical vectors)
-SIMILARITY_MAX               = 1.0
+SIMILARITY_THRESHOLD  = 0.5
+UNCERTAINTY_MARGIN    = 0.10
+SIMILARITY_MAX        = 1.0
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TRACKING SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Number of consecutive CONFIDENT_MATCH detections before an alert fires
 REQUIRED_FRAMES              = 3
-
-# All required frames must occur within this time window (seconds)
 TRACKER_WINDOW_SECONDS       = 2.0
-
-# Suppress repeat alerts for same person on same camera for this duration
 ALERT_COOLDOWN_SECONDS       = 30
-
-# Face slots with no detection updates after this interval are evicted
 SLOT_EXPIRY_SECONDS          = 5.0
-
-# Maximum pixel distance between centroids to consider the same face slot
 CENTROID_DISTANCE_THRESHOLD  = 60.0
-
-# Prune cooldown registry entries older than this (seconds) to prevent memory leak
 COOLDOWN_PRUNE_INTERVAL      = 300
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CAMERA SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Target processing frame rate — keep CPU usage manageable
-TARGET_FPS                   = 15
-
-# Derived from TARGET_FPS; sleep duration between frame iterations
-FRAME_SLEEP_SECONDS          = 1.0 / TARGET_FPS   # ~0.067s
-
-# How long to wait before attempting to reconnect to a lost camera stream
-RECONNECT_DELAY_SECONDS      = 3.0
-
-# 0 = reconnect indefinitely; N = give up after N consecutive attempts
-MAX_RECONNECT_ATTEMPTS       = 0
-
-# Minimum face bounding box dimension (width or height) in pixels
-MIN_FACE_SIZE                = 80
+TARGET_FPS              = 15
+FRAME_SLEEP_SECONDS     = 1.0 / TARGET_FPS
+RECONNECT_DELAY_SECONDS = 3.0
+MAX_RECONNECT_ATTEMPTS  = 0
+MIN_FACE_SIZE           = 80
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FACE QUALITY SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Laplacian variance below this value → face is too blurry to use
-BLUR_THRESHOLD               = 80.0
-
-# Mean pixel brightness (0–255) below this → face is too dark
-BRIGHTNESS_MIN               = 40.0
-
-# Mean pixel brightness above this → face is overexposed
-BRIGHTNESS_MAX               = 220.0
-
-# Output size for preprocessed face crops fed to the embedder
-FACE_CROP_SIZE               = 160
-
-# Fraction of bbox dimension to expand in each direction before cropping
-BBOX_EXPAND_RATIO            = 0.20
+BLUR_THRESHOLD      = 80.0
+BRIGHTNESS_MIN      = 40.0
+BRIGHTNESS_MAX      = 220.0
+FACE_CROP_SIZE      = 160
+BBOX_EXPAND_RATIO   = 0.20
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DATABASE SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Interval between automatic background DB refreshes (seconds)
-DB_REFRESH_INTERVAL_SECONDS  = 30
-
-# Initial backoff on first backend failure (seconds); doubles each retry
-DB_BACKOFF_BASE_SECONDS      = 2.0
-
-# Cap total backoff wait at this value even after many consecutive failures
-DB_BACKOFF_MAX_SECONDS       = 60.0
-
-# HTTP timeout when fetching embeddings from backend
-BACKEND_REQUEST_TIMEOUT      = 3     # seconds
+DB_REFRESH_INTERVAL_SECONDS = 30
+DB_BACKOFF_BASE_SECONDS     = 2.0
+DB_BACKOFF_MAX_SECONDS      = 60.0
+BACKEND_REQUEST_TIMEOUT     = 10
 
 # ─────────────────────────────────────────────────────────────────────────────
 # THREAD SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Seconds to wait for camera threads to join cleanly on stop()
-CAMERA_THREAD_JOIN_TIMEOUT   = 5.0
-
-# Seconds between each system health monitor log emission
-HEALTH_LOG_INTERVAL_SECONDS  = 60
+CAMERA_THREAD_JOIN_TIMEOUT  = 5.0
+HEALTH_LOG_INTERVAL_SECONDS = 60
 
 # ─────────────────────────────────────────────────────────────────────────────
 # API SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Bind only to loopback — never expose this port on any public interface
-AI_ENGINE_HOST               = os.environ.get("HOST", "0.0.0.0")
-
-AI_ENGINE_PORT               = int(os.environ.get("PORT", 5000))
-
-# Flask-Limiter rate limit expression
-API_RATE_LIMIT               = "60 per minute"
+AI_ENGINE_HOST = os.environ.get("HOST", "0.0.0.0")
+AI_ENGINE_PORT = int(os.environ.get("PORT", 5000))
+API_RATE_LIMIT = "60 per minute"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ALERT SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Number of retry attempts after an initial alert POST failure
-ALERT_RETRY_COUNT            = 1
-
-# Backoff durations (seconds) for retry attempts [attempt-1, attempt-2, ...]
-ALERT_RETRY_BACKOFFS         = [0.5, 1.0]
-
-# Maximum in-memory alert history kept by AlertService
-ALERT_HISTORY_LIMIT          = 100
+ALERT_RETRY_COUNT     = 1
+ALERT_RETRY_BACKOFFS  = [0.5, 1.0]
+ALERT_HISTORY_LIMIT   = 100
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LOGGING SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-LOG_LEVEL                    = "INFO"
-LOG_FORMAT                   = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
-LOG_DATE_FORMAT              = "%Y-%m-%d %H:%M:%S"
+LOG_LEVEL       = "INFO"
+LOG_FORMAT      = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HEALTH CHECK SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Interval between health metric log lines (seconds)
-HEALTH_CHECK_INTERVAL        = 60
+HEALTH_CHECK_INTERVAL = 60
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CONFIGURATION VALIDATION
-# Runs at import time; aborts startup if any value is out of range.
+# CONFIG VALIDATION
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _validate_config() -> None:
-    """Assert that all critical constants are within acceptable ranges."""
     errors = []
 
     if EMBEDDING_DIM != 512:
@@ -219,5 +151,5 @@ def _validate_config() -> None:
             print(f"[CONFIG ERROR] {msg}", file=sys.stderr)
         raise ValueError(f"Configuration validation failed with {len(errors)} error(s).")
 
-
 _validate_config()
+

@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+
+# OpenCV / binaries
+*.pyd
+*.dll
+
+# Logs
+*.log
+
+# Images / evidence
+evidence/
+
+# OS
+.DS_Store
+Thumbs.db

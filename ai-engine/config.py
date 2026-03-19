@@ -28,15 +28,15 @@ print(f"[CONFIG] EMBEDDINGS_URL = {BACKEND_EMBEDDINGS_URL}")
 print(f"[CONFIG] ALERT_URL = {BACKEND_ALERT_URL}")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# MODEL SETTINGS
+# MODEL SETTINGS (FIXED FOR RAILWAY)
 # ─────────────────────────────────────────────────────────────────────────────
 
-MODEL_NAME            = "buffalo_l"
-MODEL_USED            = "InsightFace-buffalo_l"
+MODEL_NAME            = "buffalo_s"
+MODEL_USED            = "InsightFace-buffalo_s"
 ALGORITHM_VERSION     = "v2.1"
 
 EMBEDDING_DIM         = 512
-DETECTION_INPUT_SIZE  = (640, 640)
+DETECTION_INPUT_SIZE  = (320, 320)
 ONNX_PROVIDER         = "CPUExecutionProvider"
 
 # ─────────────────────────────────────────────────────────────────────────────

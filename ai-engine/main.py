@@ -77,10 +77,3 @@ api_server.register_routes(
 )
 
 
-# ---------------- Health ----------------
-@app.route("/health")
-def health():
-    return {
-        "status": "ok",
-        "message": "AI Engine running (stable mode)"
-    }

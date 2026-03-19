@@ -22,86 +22,59 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 🔥 DEPLOYMENT FINGERPRINT
-print("🔥 MPIS AI ENGINE v3 LIVE 🔥")
+print("🔥 MPIS AI ENGINE STABLE MODE 🔥")
 
 
 # ---------------- Flask App ----------------
 app = Flask(__name__)
 
 
-# ---------------- Global State ----------------
-engine = None
-db_loader = None
-matcher = None
-cam_manager = None
-initialized = False
+# ---------------- Lazy Global State ----------------
+_engine = None
+_db_loader = None
+_matcher = None
 
 
-# ---------------- Init Function ----------------
-def init_system():
-    global engine, db_loader, matcher, cam_manager, initialized
+# ---------------- Lazy Load Functions ----------------
 
-    if initialized:
-        logger.info("[INIT] Already initialized")
-        return
-
-    logger.info("[INIT] Starting...")
-
-    try:
-        # -------- MODEL --------
-        if engine is None:
-            logger.info("[INIT] Loading model...")
-            engine = get_engine()
-
-        # -------- DATABASE --------
-        if db_loader is None:
-            logger.info("[INIT] Loading database...")
-            db_loader = DatabaseLoader()
-            db_loader.load()
-            db_loader.start_refresh_thread()
-
-        # -------- MATCHER --------
-        if matcher is None:
-            logger.info("[INIT] Creating matcher...")
-            matcher = FaceMatcher()
-
-        # -------- CAMERA --------
-        if cam_manager is None:
-            ENABLE_CAMERA = os.getenv("ENABLE_CAMERA", "false").lower() == "true"
-
-            if ENABLE_CAMERA:
-                from camera_manager import CameraManager
-                cam_manager = CameraManager(engine=engine, db_loader=db_loader)
-                cam_manager.add_camera(0, "CAM_01")
-                cam_manager.start_all()
-                logger.info("[CAMERA ENABLED]")
-            else:
-                logger.info("[CAMERA DISABLED]")
-
-        initialized = True
-        logger.info("[INIT SUCCESS]")
-
-    except Exception as e:
-        logger.exception("[INIT FAILED]")
-        raise e
+def get_engine_safe():
+    global _engine
+    if _engine is None:
+        logger.info("[LAZY] Loading model...")
+        _engine = get_engine()
+    return _engine
 
 
-# ---------------- SAFE INIT ----------------
-init_system()
+def get_db_loader_safe():
+    global _db_loader
+    if _db_loader is None:
+        logger.info("[LAZY] Initializing DB loader...")
+        _db_loader = DatabaseLoader()
+        # ❗ DO NOT load immediately (heavy)
+        try:
+            _db_loader.load()
+            _db_loader.start_refresh_thread()
+        except Exception as e:
+            logger.warning("[DB] Load failed (will retry later): %s", e)
+    return _db_loader
 
-# 🔴 HARD FAIL EARLY
-if engine is None:
-    raise RuntimeError("Engine failed to initialize")
 
-if db_loader is None:
-    raise RuntimeError("DB loader failed to initialize")
-
-if matcher is None:
-    raise RuntimeError("Matcher failed to initialize")
+def get_matcher_safe():
+    global _matcher
+    if _matcher is None:
+        logger.info("[LAZY] Creating matcher...")
+        _matcher = FaceMatcher()
+    return _matcher
 
 
 # ---------------- Register Routes ----------------
-api_server.register_routes(app, engine, db_loader, matcher, cam_manager)
+api_server.register_routes(
+    app,
+    get_engine_safe,
+    get_db_loader_safe,
+    get_matcher_safe,
+    None  # camera disabled in cloud
+)
 
 
 # ---------------- Health ----------------
@@ -109,5 +82,5 @@ api_server.register_routes(app, engine, db_loader, matcher, cam_manager)
 def health():
     return {
         "status": "ok",
-        "message": "AI Engine running"
+        "message": "AI Engine running (stable mode)"
     }

@@ -1,7 +1,3 @@
-"""
-alert_service.py — Production alert dispatch service for MPIS AI Engine.
-"""
-
 import logging
 import threading
 import time
@@ -9,9 +5,9 @@ from dataclasses import dataclass
 from typing import List, Optional, Deque
 from collections import deque
 
-import requests  # type: ignore
+import requests
 
-from config import (  # type: ignore
+from config import (
     BACKEND_ALERT_URL,
     BACKEND_REQUEST_TIMEOUT,
     ALERT_RETRY_COUNT,
@@ -24,13 +20,9 @@ from config import (  # type: ignore
 logger = logging.getLogger(__name__)
 
 
-# ──────────────────────────────────────────────────────────────
-# AlertRecord
-# ──────────────────────────────────────────────────────────────
-
+# ---------------- AlertRecord ----------------
 @dataclass
 class AlertRecord:
-
     person_id: str
     person_name: str
     camera_id: str
@@ -48,23 +40,12 @@ class AlertRecord:
     def dispatched_at_ms(self) -> int:
         return int(self.dispatched_at * 1000)
 
-    def __repr__(self) -> str:
-        return (
-            f"AlertRecord(person='{self.person_name}' cam='{self.camera_id}' "
-            f"sim={self.similarity:.4f} success={self.success} attempts={self.attempts})"
-        )
 
-
-# ──────────────────────────────────────────────────────────────
-# AlertService
-# ──────────────────────────────────────────────────────────────
-
+# ---------------- AlertService ----------------
 class AlertService:
 
     def __init__(self) -> None:
-
         self._history: Deque[AlertRecord] = deque(maxlen=ALERT_HISTORY_LIMIT)
-
         self._lock = threading.RLock()
 
         self._total_sent = 0
@@ -81,7 +62,27 @@ class AlertService:
         camera_id: str,
         similarity: float,
         evidence_image: Optional[str] = None,
-    ) -> bool:
+    ) -> None:
+        """
+        🔥 NON-BLOCKING ALERT (IMPORTANT FIX)
+        """
+
+        threading.Thread(
+            target=self._send_alert_internal,
+            args=(person_id, person_name, camera_id, similarity, evidence_image),
+            daemon=True,
+        ).start()
+
+    # ----------------------------------------------------------
+
+    def _send_alert_internal(
+        self,
+        person_id: str,
+        person_name: str,
+        camera_id: str,
+        similarity: float,
+        evidence_image: Optional[str],
+    ) -> None:
 
         now = time.time()
 
@@ -98,16 +99,8 @@ class AlertService:
             "detectedAt": int(now * 1000),
         }
 
-        # Optional evidence image
         if evidence_image:
             payload["evidenceImage"] = evidence_image
-
-        logger.info(
-            "[ALERT SERVICE] Dispatching alert person=%s cam=%s sim=%.4f",
-            person_name,
-            camera_id,
-            similarity,
-        )
 
         success, http_status, error_msg, attempts = self._dispatch_with_retry(payload)
 
@@ -126,73 +119,14 @@ class AlertService:
         )
 
         with self._lock:
-
             self._history.append(record)
 
             if success:
                 self._total_sent += 1
-
-                logger.info(
-                    "[ALERT SERVICE] ✔ delivered person=%s cam=%s http=%s attempts=%d",
-                    person_name,
-                    camera_id,
-                    http_status,
-                    attempts,
-                )
+                logger.info("[ALERT] ✔ sent person=%s cam=%s", person_name, camera_id)
             else:
-
                 self._total_failed += 1
-
-                logger.error(
-                    "[ALERT SERVICE] ✘ failed after %d attempts: %s",
-                    attempts,
-                    error_msg,
-                )
-
-        return success
-
-    # ----------------------------------------------------------
-
-    def get_recent_alerts(self, limit: int = 20) -> List[dict]:
-
-        with self._lock:
-            records = list(self._history)
-
-        records.reverse()
-
-        result = []
-
-        for rec in records[:limit]:
-
-            result.append(
-                {
-                    "personId": rec.person_id,
-                    "personName": rec.person_name,
-                    "cameraId": rec.camera_id,
-                    "similarity": rec.similarity,
-                    "confidenceLevel": rec.confidence_level,
-                    "success": rec.success,
-                    "attempts": rec.attempts,
-                    "detectedAt": rec.dispatched_at_ms,
-                    "httpStatus": rec.http_status,
-                    "error": rec.error_message,
-                    "evidenceImage": rec.evidence_image,
-                }
-            )
-
-        return result
-
-    # ----------------------------------------------------------
-
-    def get_metrics(self) -> dict:
-
-        with self._lock:
-
-            return {
-                "total_sent": self._total_sent,
-                "total_failed": self._total_failed,
-                "history_size": len(self._history),
-            }
+                logger.error("[ALERT] ✘ failed: %s", error_msg)
 
     # ----------------------------------------------------------
 
@@ -207,7 +141,6 @@ class AlertService:
             attempts += 1
 
             try:
-
                 response = requests.post(
                     BACKEND_ALERT_URL,
                     json=payload,
@@ -221,53 +154,46 @@ class AlertService:
 
                 last_error = f"HTTP {response.status_code}"
 
-                logger.warning(
-                    "[ALERT SERVICE] attempt %d failed http=%s",
-                    attempt_num + 1,
-                    response.status_code,
-                )
-
-            except requests.exceptions.ConnectionError:
-
-                last_error = "Connection refused"
-
-            except requests.exceptions.Timeout:
-
-                last_error = "Request timeout"
-
             except Exception as exc:
-
                 last_error = str(exc)
 
-            logger.warning(
-                "[ALERT SERVICE] attempt %d error: %s",
-                attempt_num + 1,
-                last_error,
-            )
-
             if attempt_num < ALERT_RETRY_COUNT:
-
-                if ALERT_RETRY_BACKOFFS:
-                    backoff = ALERT_RETRY_BACKOFFS[min(attempt_num, len(ALERT_RETRY_BACKOFFS) - 1)]
-                else:
-                    backoff = 1.0
-
+                backoff = (
+                    ALERT_RETRY_BACKOFFS[min(attempt_num, len(ALERT_RETRY_BACKOFFS) - 1)]
+                    if ALERT_RETRY_BACKOFFS
+                    else 1.0
+                )
                 time.sleep(backoff)
 
         return False, last_status, last_error, attempts
 
     # ----------------------------------------------------------
 
-    @staticmethod
-    def _classify_confidence(similarity: float) -> str:
+    def get_recent_alerts(self, limit: int = 20) -> List[dict]:
 
-        return "HIGH" if similarity >= 0.80 else "MEDIUM"
+        with self._lock:
+            records = list(self._history)
+
+        records.reverse()
+
+        return [
+            {
+                "personId": r.person_id,
+                "personName": r.person_name,
+                "cameraId": r.camera_id,
+                "similarity": r.similarity,
+                "confidenceLevel": r.confidence_level,
+                "success": r.success,
+                "attempts": r.attempts,
+                "detectedAt": r.dispatched_at_ms,
+                "httpStatus": r.http_status,
+                "error": r.error_message,
+            }
+            for r in records[:limit]
+        ]
 
     # ----------------------------------------------------------
 
-    def __repr__(self) -> str:
-
-        return (
-            f"AlertService(sent={self._total_sent} "
-            f"failed={self._total_failed} history={len(self._history)})"
-        )
+    @staticmethod
+    def _classify_confidence(similarity: float) -> str:
+        return "HIGH" if similarity >= 0.80 else "MEDIUM"

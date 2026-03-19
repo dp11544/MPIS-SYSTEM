@@ -1,28 +1,28 @@
 """
-api_server.py — Internal AI Engine REST API (Railway-ready)
+api_server.py — Internal AI Engine REST API (STABLE + LAZY LOAD VERSION)
 """
 
 import logging
 import time
 
-import cv2  # type: ignore
-import numpy as np  # type: ignore
-from flask import request, jsonify, Response  # type: ignore
+import cv2
+import numpy as np
+from flask import request, jsonify, Response
 
 try:
-    from flask_limiter import Limiter  # type: ignore
-    from flask_limiter.util import get_remote_address  # type: ignore
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
     LIMITER_AVAILABLE = True
 except ImportError:
     LIMITER_AVAILABLE = False
 
 try:
-    from flask_cors import CORS as FlaskCORS  # type: ignore
+    from flask_cors import CORS as FlaskCORS
     CORS_AVAILABLE = True
 except ImportError:
     CORS_AVAILABLE = False
 
-from config import (  # type: ignore
+from config import (
     API_RATE_LIMIT,
     EMBEDDING_DIM,
     MODEL_NAME,
@@ -32,9 +32,10 @@ from config import (  # type: ignore
 
 logger = logging.getLogger(__name__)
 
-_engine = None
-_db_loader = None
-_matcher = None
+# 🔥 NOW THESE ARE GETTERS (IMPORTANT)
+_engine_getter = None
+_db_loader_getter = None
+_matcher_getter = None
 _cam_manager = None
 _start_time = time.time()
 
@@ -45,11 +46,11 @@ _start_time = time.time()
 
 def register_routes(app, engine, db_loader, matcher, cam_manager=None):
 
-    global _engine, _db_loader, _matcher, _cam_manager, _start_time
+    global _engine_getter, _db_loader_getter, _matcher_getter, _cam_manager, _start_time
 
-    _engine = engine
-    _db_loader = db_loader
-    _matcher = matcher
+    _engine_getter = engine
+    _db_loader_getter = db_loader
+    _matcher_getter = matcher
     _cam_manager = cam_manager
     _start_time = time.time()
 
@@ -58,15 +59,13 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
     # ---------------- CORS ----------------
     if CORS_AVAILABLE:
         FlaskCORS(app, origins="*")
-    else:
-        logger.warning("[API SERVER] flask-cors not installed")
 
     # ---------------- Rate Limiter ----------------
     if LIMITER_AVAILABLE:
         limiter = Limiter(
             key_func=get_remote_address,
             default_limits=[API_RATE_LIMIT],
-            storage_uri="memory://",  # ✅ explicit (fix warning)
+            storage_uri="memory://",
         )
         limiter.init_app(app)
     else:
@@ -76,7 +75,6 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
                     return f
                 return decorator
         limiter = _NoLimiter()
-        logger.warning("[API SERVER] flask-limiter not installed")
 
     # ---------------------------------------------------------
     # HEALTH
@@ -87,11 +85,12 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
         uptime_seconds = int(time.time() - _start_time)
 
         db_size = 0
-        if _db_loader is not None:
-            try:
-                db_size = len(_db_loader.get_snapshot())
-            except Exception:
-                db_size = 0
+        try:
+            if _db_loader_getter is not None:
+                db = _db_loader_getter()
+                db_size = len(db.get_snapshot())
+        except Exception:
+            db_size = 0
 
         return jsonify({
             "status": "ok",
@@ -122,7 +121,7 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
                                        frame_bytes + b'\r\n')
                     time.sleep(0.1)
                 except Exception as e:
-                    logger.error("[VIDEO FEED ERROR]: %s", e)
+                    logger.error("[VIDEO ERROR]: %s", e)
                     time.sleep(0.5)
 
         return Response(generate_frames(),
@@ -134,9 +133,6 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
     @app.route("/extract-embedding", methods=["POST"])
     @limiter.limit(API_RATE_LIMIT)
     def extract_embedding():
-
-        if _engine is None:
-            return _error("AI engine not initialized", 503)
 
         if "image" not in request.files:
             return _error("No image file provided", 400)
@@ -158,8 +154,15 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
             logger.error("[API] image decode error: %s", exc)
             return _error("Image decode failed", 400)
 
+        # 🔥 LAZY LOAD ENGINE
         try:
-            embedding = _engine.get_embedding_from_image(image)
+            engine = _engine_getter()
+        except Exception as e:
+            logger.error("[API] engine init failed: %s", e)
+            return _error("Engine initialization failed", 500)
+
+        try:
+            embedding = engine.get_embedding_from_image(image)
         except Exception as e:
             logger.error("[API] embedding error: %s", e)
             return _error("Embedding extraction failed", 500)
@@ -179,9 +182,6 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
     @app.route("/recognize-face", methods=["POST"])
     @limiter.limit(API_RATE_LIMIT)
     def recognize_face():
-
-        if _matcher is None or _db_loader is None:
-            return _error("AI engine not initialized", 503)
 
         body = request.get_json(silent=True)
 
@@ -205,9 +205,17 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
         except Exception as exc:
             return _error(f"Invalid embedding: {exc}", 400)
 
+        # 🔥 LAZY LOAD MATCHER + DB
         try:
-            database = _db_loader.get_snapshot()
-            result = _matcher.match(embedding, database)
+            db_loader = _db_loader_getter()
+            matcher = _matcher_getter()
+        except Exception as e:
+            logger.error("[API] init failed: %s", e)
+            return _error("Engine initialization failed", 500)
+
+        try:
+            database = db_loader.get_snapshot()
+            result = matcher.match(embedding, database)
         except Exception as exc:
             logger.error("[API] recognition error: %s", exc)
             return _error("Recognition failed", 500)

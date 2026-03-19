@@ -1,5 +1,6 @@
 """
 embedding_engine.py — Production-grade InsightFace embedding engine for MPIS.
+(STABLE VERSION FOR RAILWAY)
 """
 
 import logging
@@ -11,7 +12,7 @@ import numpy as np  # type: ignore
 import onnxruntime as ort  # type: ignore
 from insightface.app import FaceAnalysis  # type: ignore
 
-from config import (  # type: ignore
+from config import (
     MODEL_NAME,
     EMBEDDING_DIM,
     DETECTION_INPUT_SIZE,
@@ -26,6 +27,7 @@ _engine_instance: Optional["EmbeddingEngine"] = None
 _engine_lock = threading.Lock()
 
 
+# ---------------- Singleton ----------------
 def get_engine() -> "EmbeddingEngine":
     global _engine_instance
 
@@ -38,6 +40,7 @@ def get_engine() -> "EmbeddingEngine":
     return _engine_instance
 
 
+# ---------------- Engine ----------------
 class EmbeddingEngine:
 
     def __init__(self) -> None:
@@ -82,12 +85,12 @@ class EmbeddingEngine:
             EMBEDDING_DIM,
         )
 
-        self.warm_up()
+        # ❌ REMOVED warm_up() (IMPORTANT FIX)
+        # self.warm_up()
 
     # -------------------------------------------------------
 
     def _resolve_provider(self) -> str:
-        """Choose best ONNX provider available."""
 
         available = ort.get_available_providers()
 
@@ -104,7 +107,6 @@ class EmbeddingEngine:
     def get_faces(self, bgr_frame: np.ndarray) -> List:
 
         if bgr_frame is None or bgr_frame.size == 0:
-            logger.debug("[EMBEDDING ENGINE] Empty frame received")
             return []
 
         start = time.monotonic()
@@ -121,20 +123,9 @@ class EmbeddingEngine:
         valid_faces = []
 
         for face in faces:
-
             emb = getattr(face, "normed_embedding", None)
-
-            if not self.validate_embedding(emb):
-                continue
-
-            valid_faces.append(face)
-
-        logger.debug(
-            "[EMBEDDING ENGINE] Faces: %d valid / %d total (%.1f ms)",
-            len(valid_faces),
-            len(faces),
-            elapsed,
-        )
+            if self.validate_embedding(emb):
+                valid_faces.append(face)
 
         return valid_faces
 
@@ -143,7 +134,6 @@ class EmbeddingEngine:
     def get_embedding_from_image(self, bgr_image: np.ndarray) -> Optional[np.ndarray]:
 
         if bgr_image is None or bgr_image.size == 0:
-            logger.warning("[EMBEDDING ENGINE] Empty image provided")
             return None
 
         start = time.monotonic()
@@ -158,46 +148,25 @@ class EmbeddingEngine:
         self._record_inference(elapsed)
 
         if not faces:
-            logger.info("[EMBEDDING ENGINE] No face detected")
             return None
 
         best = max(faces, key=lambda f: float(getattr(f, "det_score", 0)))
 
         emb = getattr(best, "normed_embedding", None)
-
-        normalized = self.normalize_embedding(emb)
-
-        if normalized is None:
-            return None
-
-        logger.info(
-            "[EMBEDDING ENGINE] Embedding extracted (%.1f ms score=%.3f)",
-            elapsed,
-            float(getattr(best, "det_score", 0)),
-        )
-
-        return normalized
+        return self.normalize_embedding(emb)
 
     # -------------------------------------------------------
 
     @staticmethod
     def validate_embedding(emb: Optional[np.ndarray]) -> bool:
 
-        if emb is None:
-            return False
-
-        if not isinstance(emb, np.ndarray):
+        if emb is None or not isinstance(emb, np.ndarray):
             return False
 
         if emb.shape != (EMBEDDING_DIM,):
             return False
 
-        norm = float(np.linalg.norm(emb))
-
-        if norm < 1e-6:
-            return False
-
-        return True
+        return float(np.linalg.norm(emb)) > 1e-6
 
     # -------------------------------------------------------
 
@@ -208,32 +177,7 @@ class EmbeddingEngine:
             return None
 
         norm = float(np.linalg.norm(emb))
-
-        if norm < 1e-6:
-            return None
-
         return (emb / norm).astype(np.float32)
-
-    # -------------------------------------------------------
-
-    def warm_up(self) -> None:
-
-        logger.info("[EMBEDDING ENGINE] Running warm-up inference")
-
-        size = DETECTION_INPUT_SIZE[0]
-
-        dummy = np.zeros((size, size, 3), dtype=np.uint8)
-
-        start = time.monotonic()
-
-        try:
-            self.app.get(dummy)
-        except Exception as exc:
-            logger.warning("[EMBEDDING ENGINE] Warmup warning: %s", exc)
-
-        elapsed = (time.monotonic() - start) * 1000
-
-        logger.info("[EMBEDDING ENGINE] Warm-up completed (%.1f ms)", elapsed)
 
     # -------------------------------------------------------
 
@@ -246,10 +190,11 @@ class EmbeddingEngine:
 
     def get_metrics(self) -> dict:
 
-        if self._inference_count == 0:
-            avg = 0.0
-        else:
-            avg = self._total_inference_ms / self._inference_count
+        avg = (
+            self._total_inference_ms / self._inference_count
+            if self._inference_count > 0
+            else 0.0
+        )
 
         return {
             "model_name": self._model_name,

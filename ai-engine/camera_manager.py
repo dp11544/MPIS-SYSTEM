@@ -1,5 +1,5 @@
 """
-camera_manager.py — Multi-camera CCTV stream manager with evidence capture.
+camera_manager.py — Local camera + Cloud AI (Railway)
 """
 
 import logging
@@ -10,39 +10,27 @@ import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Tuple
 
-import cv2  # type: ignore
-import numpy as np  # type: ignore
+import cv2
+import numpy as np
+import requests
 
-import alert_service  # type: ignore
-
-# Instantiate AlertService
-alert_service_instance = alert_service.AlertService()
-from database_loader import DatabaseLoader  # type: ignore
-from embedding_engine import EmbeddingEngine  # type: ignore
-from face_detector import FaceDetector  # type: ignore
-from face_matcher import FaceMatcher  # type: ignore
-from multi_frame_tracker import MultiFrameTracker, assign_face_slots  # type: ignore
-
+import alert_service
 
 logger = logging.getLogger(__name__)
 
+# ---------------- CONFIG ----------------
+API_BASE_URL = "https://your-railway-url"  # 🔥 CHANGE THIS
+EXTRACT_API = f"{API_BASE_URL}/extract-embedding"
+RECOGNIZE_API = f"{API_BASE_URL}/recognize-face"
 
-# -------------------------------------------------------
-# Camera Settings
-# -------------------------------------------------------
-
-TARGET_FPS = 15
+TARGET_FPS = 10
+FRAME_SKIP = 3  # process every 3rd frame
 FRAME_DELAY = 1.0 / TARGET_FPS
-RECONNECT_DELAY = 3.0
-MAX_RECONNECT_ATTEMPTS = 0
-
-
-# -------------------------------------------------------
-# Evidence Settings
-# -------------------------------------------------------
 
 EVIDENCE_DIR = "evidence"
 os.makedirs(EVIDENCE_DIR, exist_ok=True)
+
+alert_service_instance = alert_service.AlertService()
 
 
 # -------------------------------------------------------
@@ -51,308 +39,144 @@ os.makedirs(EVIDENCE_DIR, exist_ok=True)
 
 class CameraStream:
 
-    def __init__(
-        self,
-        source,
-        camera_id: str,
-        engine: EmbeddingEngine,
-        db_loader: DatabaseLoader,
-        matcher: FaceMatcher,
-        detector: FaceDetector,
-    ) -> None:
-
+    def __init__(self, source, camera_id: str):
         self.source = source
         self.camera_id = camera_id
-        self.engine = engine
-        self.db_loader = db_loader
-        self.matcher = matcher
-        self.detector = detector
-
-        self.tracker = MultiFrameTracker(camera_id=camera_id)
 
         self._running = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
-        self._prev_centroids: Dict[int, Tuple[float, float]] = {}
-
         self._latest_frame = None
         self._frame_lock = threading.Lock()
 
+        self.frame_count = 0
+
     # ---------------------------------------------------
 
-    def start(self) -> None:
-
+    def start(self):
         self._running.set()
-
-        self._thread = threading.Thread(
-            target=self._run,
-            name=f"camera-{self.camera_id}",
-            daemon=True,
-        )
-
+        self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
-        logger.info(
-            "[CAMERA STREAM STARTED] cameraId=%s source=%s",
-            self.camera_id,
-            self.source,
-        )
-
     # ---------------------------------------------------
 
-    def stop(self) -> None:
-
+    def stop(self):
         self._running.clear()
-
         if self._thread:
-            self._thread.join(timeout=5.0)
+            self._thread.join(timeout=5)
 
     # ---------------------------------------------------
 
-    def _save_evidence(
-        self,
-        frame: np.ndarray,
-        bbox: Optional[np.ndarray],
-        person_id: str,
-    ) -> str:
+    def _run(self):
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        cap = cv2.VideoCapture(self.source)
 
-        filename = (
-            f"{person_id}_{self.camera_id}_{timestamp}_{uuid.uuid4().hex[:6]}.jpg"
-        )
+        if not cap.isOpened():
+            logger.error("[CAMERA] Cannot open source %s", self.source)
+            return
 
-        filepath = os.path.join(EVIDENCE_DIR, filename)
-
-        try:
-
-            if bbox is not None:
-
-                x1, y1, x2, y2 = bbox.astype(int)
-
-                h, w = frame.shape[:2]
-
-                x1 = max(0, x1)
-                y1 = max(0, y1)
-                x2 = min(w, x2)
-                y2 = min(h, y2)
-
-                face_crop = frame[y1:y2, x1:x2]
-
-                if face_crop.size > 0:
-                    cv2.imwrite(filepath, face_crop)
-                else:
-                    cv2.imwrite(filepath, frame)
-
-            else:
-                cv2.imwrite(filepath, frame)
-
-            logger.info(
-                "[EVIDENCE SAVED] camera=%s file=%s",
-                self.camera_id,
-                filepath,
-            )
-
-        except Exception as exc:
-
-            logger.error("[EVIDENCE ERROR] %s", exc)
-
-            filepath = ""
-
-        return filepath
-
-    # ---------------------------------------------------
-
-    def _run(self) -> None:
-
-        reconnect_count = 0
+        logger.info("[CAMERA STARTED] %s", self.camera_id)
 
         while self._running.is_set():
 
-            cap = self._open_capture()
-
-            if cap is None:
-
-                reconnect_count += 1
-
-                if MAX_RECONNECT_ATTEMPTS > 0 and reconnect_count > MAX_RECONNECT_ATTEMPTS:
-
-                    logger.error(
-                        "[CAMERA] cameraId=%s max reconnect attempts reached",
-                        self.camera_id,
-                    )
-
-                    break
-
-                logger.warning(
-                    "[CAMERA] cameraId=%s reconnecting in %.1fs (attempt %d)",
-                    self.camera_id,
-                    RECONNECT_DELAY,
-                    reconnect_count,
-                )
-
-                time.sleep(RECONNECT_DELAY)
-
-                continue
-
-            reconnect_count = 0
-
-            logger.info("[CAMERA] cameraId=%s stream opened", self.camera_id)
-
-            self._process_capture(cap)
-
-            cap.release()
-
-            if self._running.is_set():
-
-                logger.warning(
-                    "[CAMERA] cameraId=%s stream lost — reconnecting",
-                    self.camera_id,
-                )
-
-                time.sleep(RECONNECT_DELAY)
-
-        logger.info("[CAMERA] cameraId=%s thread exited", self.camera_id)
-
-    # ---------------------------------------------------
-
-    def _open_capture(self) -> Optional[cv2.VideoCapture]:
-
-        try:
-
-            cap = cv2.VideoCapture(self.source)
-
-            if cap.isOpened():
-                return cap
-
-            cap.release()
-
-        except Exception as exc:
-
-            logger.error(
-                "[CAMERA] cameraId=%s open error: %s",
-                self.camera_id,
-                exc,
-            )
-
-        return None
-
-    # ---------------------------------------------------
-
-    def _process_capture(self, cap: cv2.VideoCapture) -> None:
-
-        while self._running.is_set():
-
-            frame_start = time.time()
+            start = time.time()
 
             ret, frame = cap.read()
+            if not ret:
+                continue
 
-            if not ret or frame is None:
+            with self._frame_lock:
+                self._latest_frame = frame.copy()
 
-                logger.warning(
-                    "[CAMERA] cameraId=%s dropped frame",
-                    self.camera_id,
-                )
+            self.frame_count += 1
 
-                break
+            # 🔥 Skip frames for performance
+            if self.frame_count % FRAME_SKIP != 0:
+                continue
 
             self._process_frame(frame)
 
-            elapsed = time.time() - frame_start
+            elapsed = time.time() - start
+            if elapsed < FRAME_DELAY:
+                time.sleep(FRAME_DELAY - elapsed)
 
-            sleep_time = FRAME_DELAY - elapsed
-
-            if sleep_time > 0:
-                time.sleep(sleep_time)
+        cap.release()
 
     # ---------------------------------------------------
 
-    def _process_frame(self, frame: np.ndarray) -> None:
-
-        with self._frame_lock:
-            self._latest_frame = frame.copy()
+    def _process_frame(self, frame):
 
         try:
+            # Resize for speed
+            frame_small = cv2.resize(frame, (640, 480))
 
-            raw_faces = self.engine.get_faces(frame)
+            _, img_encoded = cv2.imencode('.jpg', frame_small)
 
-            if not raw_faces:
+            files = {
+                "image": ("frame.jpg", img_encoded.tobytes(), "image/jpeg")
+            }
+
+            # -------- STEP 1: GET EMBEDDING --------
+            res1 = requests.post(EXTRACT_API, files=files, timeout=3)
+
+            if res1.status_code != 200:
                 return
 
-            detected_faces = self.detector.filter(
-                raw_faces,
-                camera_id=self.camera_id,
+            embedding = res1.json()["embedding"]
+
+            # -------- STEP 2: RECOGNITION --------
+            res2 = requests.post(
+                RECOGNIZE_API,
+                json={"embedding": embedding},
+                timeout=3
             )
 
-            if not detected_faces:
+            if res2.status_code != 200:
                 return
 
-            bboxes = [f.bbox for f in detected_faces]
+            result = res2.json()
 
-            face_to_slot, self._prev_centroids = assign_face_slots(
-                bboxes,
-                self._prev_centroids,
-            )
+            if result.get("status") == "MATCH":
 
-            database = self.db_loader.get_snapshot()
+                logger.info(
+                    "[MATCH] %s (%.2f)",
+                    result.get("personName"),
+                    result.get("similarity")
+                )
 
-            for fi, face in enumerate(detected_faces):
+                evidence_path = self._save_evidence(frame)
 
-                slot_id = face_to_slot[fi]
+                alert_service_instance.send_alert(
+                    person_id=result.get("personId", ""),
+                    person_name=result.get("personName", ""),
+                    camera_id=self.camera_id,
+                    similarity=result.get("similarity", 0),
+                    evidence_image=evidence_path,
+                )
 
-                centroid = self._prev_centroids[slot_id]
-
-                emb = face.embedding
-
-                result = self.matcher.match(emb, database)
-
-                if result.is_confident:
-
-                    should_alert = self.tracker.update(
-                        slot_id=slot_id,  # FIXED
-                        centroid=centroid,
-                        person_name=result.person_name,
-                        similarity=result.similarity,
-                    )
-
-                    if should_alert:
-
-                        evidence_path = self._save_evidence(
-                            frame,
-                            face.bbox,
-                            result.person_id or "unknown",
-                        )
-
-                        alert_service_instance.send_alert(
-                            person_id=result.person_id or "",
-                            person_name=result.person_name,
-                            camera_id=self.camera_id,
-                            similarity=result.similarity,
-                            evidence_image=evidence_path,
-                        )
-
-                else:
-
-                    self.tracker.reset_slot(slot_id)
-
-        except Exception as exc:
-
-            logger.error(
-                "[CAMERA] cameraId=%s frame processing error: %s",
-                self.camera_id,
-                exc,
-                exc_info=True,
-            )
+        except Exception as e:
+            logger.error("[CLOUD ERROR] %s", e)
 
     # ---------------------------------------------------
 
-    def get_latest_frame(self) -> Optional[np.ndarray]:
+    def _save_evidence(self, frame):
 
+        filename = f"{self.camera_id}_{uuid.uuid4().hex[:6]}.jpg"
+        path = os.path.join(EVIDENCE_DIR, filename)
+
+        try:
+            cv2.imwrite(path, frame)
+        except:
+            path = ""
+
+        return path
+
+    # ---------------------------------------------------
+
+    def get_latest_frame(self):
         with self._frame_lock:
-
             if self._latest_frame is None:
                 return None
-
             return self._latest_frame.copy()
 
 
@@ -362,103 +186,31 @@ class CameraStream:
 
 class CameraManager:
 
-    def __init__(
-        self,
-        engine: EmbeddingEngine,
-        db_loader: DatabaseLoader,
-    ) -> None:
-
-        self.engine = engine
-        self.db_loader = db_loader
-
-        self.matcher = FaceMatcher()
-        self.detector = FaceDetector()
-
+    def __init__(self):
         self._streams: List[CameraStream] = []
 
-    # ---------------------------------------------------
+    def add_camera(self, source, camera_id: str):
+        self._streams.append(CameraStream(source, camera_id))
 
-    def add_camera(self, source, camera_id: str) -> None:
-
-        stream = CameraStream(
-            source=source,
-            camera_id=camera_id,
-            engine=self.engine,
-            db_loader=self.db_loader,
-            matcher=self.matcher,
-            detector=self.detector,
-        )
-
-        self._streams.append(stream)
-
-    # ---------------------------------------------------
-
-    def start_all(self) -> None:
+    def start_all(self):
 
         if not self._streams:
-
-            logger.warning("[CAMERA MANAGER] No cameras configured")
-
+            logger.warning("[CAMERA MANAGER] No cameras")
             return
 
-        for stream in self._streams:
-            stream.start()
+        for s in self._streams:
+            s.start()
 
-        logger.info(
-            "[CAMERA MANAGER] Started %d camera stream(s)",
-            len(self._streams),
-        )
+        logger.info("[CAMERA MANAGER] Started %d camera(s)", len(self._streams))
 
-    # ---------------------------------------------------
+    def stop_all(self):
 
-    def stop_all(self) -> None:
+        for s in self._streams:
+            s.stop()
 
-        for stream in self._streams:
-            stream.stop()
-
-        logger.info("[CAMERA MANAGER] All camera streams stopped")
-
-    # ---------------------------------------------------
-
-    def get_stats(self):
-
-        return [
-            {
-                "camera_id": s.camera_id,
-                "source": s.source,
-            }
-            for s in self._streams
-        ]
-
-    # ---------------------------------------------------
-
-    def wait_forever(self) -> None:
-
-        try:
-
-            while any(
-                s._thread and s._thread.is_alive()
-                for s in self._streams
-            ):
-                time.sleep(1.0)
-
-        except KeyboardInterrupt:
-
-            logger.info("[CAMERA MANAGER] KeyboardInterrupt")
-
-            self.stop_all()
-
-    # ---------------------------------------------------
-
-    def get_latest_frame(self, camera_id: Optional[str] = None) -> Optional[np.ndarray]:
+    def get_latest_frame(self):
 
         if not self._streams:
             return None
-
-        if camera_id is not None:
-
-            for s in self._streams:
-                if s.camera_id == camera_id:
-                    return s.get_latest_frame()
 
         return self._streams[0].get_latest_frame()

@@ -21,6 +21,9 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# 🔥 DEPLOYMENT FINGERPRINT
+print("🔥 MPIS AI ENGINE v3 LIVE 🔥")
+
 
 # ---------------- Flask App ----------------
 app = Flask(__name__)
@@ -31,40 +34,73 @@ engine = None
 db_loader = None
 matcher = None
 cam_manager = None
+initialized = False
 
 
 # ---------------- Init Function ----------------
 def init_system():
-    global engine, db_loader, matcher, cam_manager
+    global engine, db_loader, matcher, cam_manager, initialized
 
-    if engine is None:
-        logger.info("[INIT] Loading model...")
-        engine = get_engine()
+    if initialized:
+        logger.info("[INIT] Already initialized")
+        return
 
-    if db_loader is None:
-        logger.info("[INIT] Loading database...")
-        db_loader = DatabaseLoader()
-        db_loader.load()
-        db_loader.start_refresh_thread()
+    logger.info("[INIT] Starting...")
 
-    if matcher is None:
-        matcher = FaceMatcher()
+    try:
+        # -------- MODEL --------
+        if engine is None:
+            logger.info("[INIT] Loading model...")
+            engine = get_engine()
 
-    if cam_manager is None:
-        ENABLE_CAMERA = os.getenv("ENABLE_CAMERA", "false").lower() == "true"
+        # -------- DATABASE --------
+        if db_loader is None:
+            logger.info("[INIT] Loading database...")
+            db_loader = DatabaseLoader()
+            db_loader.load()
+            db_loader.start_refresh_thread()
 
-        if ENABLE_CAMERA:
-            from camera_manager import CameraManager
-            cam_manager = CameraManager(engine=engine, db_loader=db_loader)
-            cam_manager.add_camera(0, "CAM_01")
-            cam_manager.start_all()
-            logger.info("[CAMERA ENABLED]")
-        else:
-            logger.info("[CAMERA DISABLED]")
+        # -------- MATCHER --------
+        if matcher is None:
+            logger.info("[INIT] Creating matcher...")
+            matcher = FaceMatcher()
+
+        # -------- CAMERA --------
+        if cam_manager is None:
+            ENABLE_CAMERA = os.getenv("ENABLE_CAMERA", "false").lower() == "true"
+
+            if ENABLE_CAMERA:
+                from camera_manager import CameraManager
+                cam_manager = CameraManager(engine=engine, db_loader=db_loader)
+                cam_manager.add_camera(0, "CAM_01")
+                cam_manager.start_all()
+                logger.info("[CAMERA ENABLED]")
+            else:
+                logger.info("[CAMERA DISABLED]")
+
+        initialized = True
+        logger.info("[INIT SUCCESS]")
+
+    except Exception as e:
+        logger.exception("[INIT FAILED]")
+        raise e
 
 
-# ---------------- INIT + REGISTER ROUTES (FIXED) ----------------
+# ---------------- SAFE INIT ----------------
 init_system()
+
+# 🔴 HARD FAIL EARLY
+if engine is None:
+    raise RuntimeError("Engine failed to initialize")
+
+if db_loader is None:
+    raise RuntimeError("DB loader failed to initialize")
+
+if matcher is None:
+    raise RuntimeError("Matcher failed to initialize")
+
+
+# ---------------- Register Routes ----------------
 api_server.register_routes(app, engine, db_loader, matcher, cam_manager)
 
 

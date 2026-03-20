@@ -31,27 +31,42 @@ public class AuthService {
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    // 🔥 LOGIN (SAFE VERSION — NO CRASHES)
+    // 🔥 LOGIN (FULLY SAFE — NO 500 ERRORS)
     public String login(String batchId, String password) {
 
         User user = userRepository.findByBatchId(batchId).orElse(null);
 
-        // ✅ FIX 1: No exception — safe handling
+        // ❌ USER NOT FOUND
         if (user == null) {
-            log.warn("Login failed: user not found for batchId={}", batchId);
+            log.warn("User not found: {}", batchId);
             logAttempt(batchId, false, "USER_NOT_FOUND");
             return "INVALID";
         }
 
-        // ✅ Account locked
+        // ❌ PASSWORD HASH NULL (CRASH FIX)
+        String hash = user.getPasswordHash();
+        if (hash == null || hash.isEmpty()) {
+            log.error("Password hash missing for batchId={}", batchId);
+            return "INVALID";
+        }
+
+        // ❌ ACCOUNT LOCKED
         if (user.getLockUntil() != null && user.getLockUntil().isAfter(LocalDateTime.now())) {
             logAttempt(batchId, false, "LOCKED");
-            log.warn("Account locked for batchId={}", batchId);
             return "LOCKED";
         }
 
-        // ✅ Password check
-        if (!encoder.matches(password, user.getPasswordHash())) {
+        // 🔥 SAFE PASSWORD CHECK (NO CRASH)
+        boolean passwordMatch;
+        try {
+            passwordMatch = encoder.matches(password, hash);
+        } catch (Exception e) {
+            log.error("Password comparison failed for batchId={}", batchId, e);
+            return "INVALID";
+        }
+
+        // ❌ WRONG PASSWORD
+        if (!passwordMatch) {
             user.setFailedAttempts(user.getFailedAttempts() + 1);
 
             if (user.getFailedAttempts() >= 3) {
@@ -62,20 +77,19 @@ public class AuthService {
             userRepository.save(user);
             logAttempt(batchId, false, "WRONG_PASSWORD");
 
-            log.warn("Invalid password for batchId={}", batchId);
             return "INVALID";
         }
 
-        // ✅ Reset failed attempts
+        // ✅ RESET FAILED ATTEMPTS
         user.setFailedAttempts(0);
         userRepository.save(user);
 
-        // ✅ Password reset flow
+        // 🔁 PASSWORD RESET REQUIRED
         if ("RESET_REQUIRED".equals(user.getStatus())) {
             return "RESET_REQUIRED";
         }
 
-        // 🔥 Generate OTP
+        // 🔥 GENERATE OTP
         String otp = generateOtp();
 
         otpSessionRepository.deleteByBatchId(batchId);
@@ -89,7 +103,7 @@ public class AuthService {
                         .attempts(0)
                         .build());
 
-        // 🔐 Demo logging
+        // 📱 MASK MOBILE
         String maskedMobile = "******0000";
         if (user.getMobile() != null && user.getMobile().length() >= 4) {
             int len = user.getMobile().length();
@@ -98,7 +112,7 @@ public class AuthService {
 
         log.info("🔐 OTP sent to {}: {}", maskedMobile, otp);
 
-        // ✅ Demo mode
+        // 🔥 DEMO MODE
         if (demoMode) {
             return "DEMO_" + maskedMobile + "_" + otp;
         }
@@ -106,13 +120,12 @@ public class AuthService {
         return "OTP_REQUIRED";
     }
 
-    // 🔥 OTP VERIFY
+    // 🔥 OTP VERIFY (SAFE)
     public String verifyOtp(String batchId, String otp) {
 
         OtpSession session = otpSessionRepository.findByBatchId(batchId).orElse(null);
 
         if (session == null) {
-            log.warn("OTP not found for batchId={}", batchId);
             return "INVALID_OTP";
         }
 
@@ -136,18 +149,16 @@ public class AuthService {
             return "INVALID_OTP";
         }
 
-        // ✅ Success
+        // ✅ SUCCESS
         session.setVerified(true);
         otpSessionRepository.save(session);
 
         logAttempt(batchId, true, "SUCCESS");
 
-        log.info("OTP verified for batchId={}", batchId);
-
         return jwtUtil.generateToken(batchId);
     }
 
-    // 🔥 LOGGING
+    // 📊 LOGGING
     private void logAttempt(String batchId, boolean success, String reason) {
         loginAttemptRepository.save(
                 LoginAttempt.builder()
@@ -158,6 +169,7 @@ public class AuthService {
                         .build());
     }
 
+    // 🔢 OTP GENERATOR
     private String generateOtp() {
         return String.valueOf(100000 + new Random().nextInt(900000));
     }

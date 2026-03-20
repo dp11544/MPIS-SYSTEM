@@ -13,16 +13,13 @@ import java.io.IOException;
 
 /**
  * MPIS Authentication Filter
- * 
- * Validates JWT tokens for protected endpoints.
- * Supports standard Authorization: Bearer token header.
  */
 @Component
 public class AuthFilter implements Filter {
 
     private static final Logger log = LoggerFactory.getLogger(AuthFilter.class);
     private static final String BEARER_PREFIX = "Bearer ";
-    
+
     private final JwtUtil jwtUtil;
 
     @Autowired
@@ -40,19 +37,19 @@ public class AuthFilter implements Filter {
         String path = req.getRequestURI();
         String method = req.getMethod();
 
-        // Allow CORS pre-flight requests
+        // ✅ Allow CORS preflight
         if ("OPTIONS".equalsIgnoreCase(method)) {
             chain.doFilter(request, response);
             return;
         }
 
-        // Public endpoints that don't require authentication
+        // ✅ PUBLIC ENDPOINTS (NO TOKEN REQUIRED)
         if (isPublicEndpoint(path)) {
             chain.doFilter(request, response);
             return;
         }
 
-        // Extract token from Authorization header
+        // 🔒 Extract token
         String token = extractToken(req);
 
         if (token == null || token.isEmpty()) {
@@ -61,7 +58,7 @@ public class AuthFilter implements Filter {
             return;
         }
 
-        // Validate JWT signature and expiration
+        // 🔒 Validate token
         if (!jwtUtil.validateToken(token)) {
             log.warn("Invalid or expired token for: {} {}", method, path);
             sendUnauthorized(res, "Unauthorized: Invalid or Expired Token");
@@ -72,37 +69,38 @@ public class AuthFilter implements Filter {
     }
 
     /**
-     * Check if the endpoint is public (no auth required)
+     * ✅ FIXED: Public endpoints (LOGIN MUST BE HERE)
      */
-   private boolean isPublicEndpoint(String path) {
-    return path.startsWith("/api/auth") ||
-           path.startsWith("/api/persons") ||
-           path.startsWith("/api/realtime") ||
-           path.startsWith("/api/cameras") ||
-           path.startsWith("/api/alerts") ||
-           path.startsWith("/api/match") ||
-           path.startsWith("/uploads/") ||
-           path.startsWith("/actuator") ||
-           path.startsWith("/health") ||
-           path.startsWith("/ws-alerts");
-}
+    private boolean isPublicEndpoint(String path) {
+        return path.startsWith("/api/auth") ||   // normal case
+               path.startsWith("/auth") ||       // 🔥 FIX for your issue
+               path.startsWith("/api/persons") ||
+               path.startsWith("/api/realtime") ||
+               path.startsWith("/api/cameras") ||
+               path.startsWith("/api/alerts") ||
+               path.startsWith("/api/match") ||
+               path.startsWith("/uploads/") ||
+               path.startsWith("/actuator") ||
+               path.startsWith("/health") ||
+               path.startsWith("/ws-alerts");
+    }
+
     /**
-     * Extract JWT token from Authorization header.
-     * Supports both "Bearer token" and legacy "X-SESSION-TOKEN" header.
+     * Extract JWT token
      */
     private String extractToken(HttpServletRequest req) {
-        // Primary: Standard Authorization header
         String authHeader = req.getHeader("Authorization");
+
         if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
             return authHeader.substring(BEARER_PREFIX.length());
         }
-        
-        // Fallback: Legacy custom header (for backward compatibility)
+
+        // fallback (legacy)
         String legacyToken = req.getHeader("X-SESSION-TOKEN");
         if (legacyToken != null && !legacyToken.isEmpty()) {
             return legacyToken;
         }
-        
+
         return null;
     }
 

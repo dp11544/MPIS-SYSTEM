@@ -15,7 +15,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*") // allow frontend (fix CORS)
+@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final AuthService authService;
@@ -31,30 +31,47 @@ public class AuthController {
 
         AuthResponse response = new AuthResponse();
 
+        // 🔥 DEMO MODE (OTP RETURN)
         if (status.startsWith("DEMO_")) {
             String[] parts = status.split("_");
 
             response.setStatus("OTP_REQUIRED");
             response.setMessage("DEMO MODE ACTIVE: " + parts[2] + " (Sent to " + parts[1] + ")");
 
-            Map<String, String> data = new HashMap<>();
+            Map<String, Object> data = new HashMap<>();
             data.put("demoOtp", parts[2]);
+
             response.setData(data);
+        }
 
-        } else if ("OTP_REQUIRED".equals(status)) {
-
+        // 🔥 NORMAL OTP FLOW
+        else if ("OTP_REQUIRED".equals(status)) {
             response.setStatus("OTP_REQUIRED");
             response.setMessage("Please verify OTP.");
+        }
 
-        } else if ("RESET_REQUIRED".equals(status)) {
-
+        // 🔥 PASSWORD RESET
+        else if ("RESET_REQUIRED".equals(status)) {
             response.setStatus("RESET_REQUIRED");
             response.setMessage("Reset password required.");
+        }
 
-        } else {
+        // 🔥 ACCOUNT LOCKED
+        else if ("LOCKED".equals(status)) {
+            response.setStatus("LOCKED");
+            response.setMessage("Account is locked. Try later.");
+        }
 
-            response.setStatus(status);
-            response.setMessage("Authentication processed.");
+        // 🔥 INVALID LOGIN
+        else if ("INVALID".equals(status)) {
+            response.setStatus("INVALID");
+            response.setMessage("Invalid ID or Password.");
+        }
+
+        // 🔥 FALLBACK
+        else {
+            response.setStatus("ERROR");
+            response.setMessage("Unexpected error occurred.");
         }
 
         return ResponseEntity.ok(response);
@@ -64,18 +81,56 @@ public class AuthController {
     @PostMapping("/otp/verify")
     public ResponseEntity<AuthResponse> verifyOtp(@Valid @RequestBody OtpVerifyRequest request) {
 
-        String token = authService.verifyOtp(
+        String result = authService.verifyOtp(
                 request.getBatchId(),
                 request.getOtp()
         );
 
         AuthResponse response = new AuthResponse();
-        response.setStatus("SUCCESS");
-        response.setMessage("Verified");
 
-        Map<String, String> data = new HashMap<>();
-        data.put("token", token);
-        response.setData(data);
+        // 🔥 SUCCESS
+        if (!result.startsWith("INVALID") &&
+            !result.contains("EXPIRED") &&
+            !result.contains("ATTEMPTS")) {
+
+            response.setStatus("SUCCESS");
+            response.setMessage("OTP verified successfully.");
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("token", result);
+
+            response.setData(data);
+        }
+
+        // 🔥 INVALID OTP
+        else if ("INVALID_OTP".equals(result)) {
+            response.setStatus("INVALID_OTP");
+            response.setMessage("Invalid OTP.");
+        }
+
+        // 🔥 EXPIRED
+        else if ("OTP_EXPIRED".equals(result)) {
+            response.setStatus("OTP_EXPIRED");
+            response.setMessage("OTP expired.");
+        }
+
+        // 🔥 TOO MANY ATTEMPTS
+        else if ("OTP_ATTEMPTS_EXCEEDED".equals(result)) {
+            response.setStatus("OTP_ATTEMPTS_EXCEEDED");
+            response.setMessage("Too many attempts.");
+        }
+
+        // 🔥 ALREADY USED
+        else if ("OTP_ALREADY_USED".equals(result)) {
+            response.setStatus("OTP_ALREADY_USED");
+            response.setMessage("OTP already used.");
+        }
+
+        // 🔥 FALLBACK
+        else {
+            response.setStatus("ERROR");
+            response.setMessage("OTP verification failed.");
+        }
 
         return ResponseEntity.ok(response);
     }

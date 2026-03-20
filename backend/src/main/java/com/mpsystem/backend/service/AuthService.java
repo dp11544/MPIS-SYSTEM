@@ -31,18 +31,26 @@ public class AuthService {
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    // LOGIN (PASSWORD CHECK + OTP GENERATION)
+    // 🔥 LOGIN (SAFE VERSION — NO CRASHES)
     public String login(String batchId, String password) {
 
-        User user = userRepository.findByBatchId(batchId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByBatchId(batchId).orElse(null);
 
-        if (user.getLockUntil() != null && user.getLockUntil().isAfter(LocalDateTime.now())) {
-            logAttempt(batchId, false, "LOCKED");
-            log.warn("Login blocked: Account locked for batchId={}", batchId);
-            throw new RuntimeException("Account locked");
+        // ✅ FIX 1: No exception — safe handling
+        if (user == null) {
+            log.warn("Login failed: user not found for batchId={}", batchId);
+            logAttempt(batchId, false, "USER_NOT_FOUND");
+            return "INVALID";
         }
 
+        // ✅ Account locked
+        if (user.getLockUntil() != null && user.getLockUntil().isAfter(LocalDateTime.now())) {
+            logAttempt(batchId, false, "LOCKED");
+            log.warn("Account locked for batchId={}", batchId);
+            return "LOCKED";
+        }
+
+        // ✅ Password check
         if (!encoder.matches(password, user.getPasswordHash())) {
             user.setFailedAttempts(user.getFailedAttempts() + 1);
 
@@ -53,39 +61,44 @@ public class AuthService {
 
             userRepository.save(user);
             logAttempt(batchId, false, "WRONG_PASSWORD");
-            log.warn("Login failed (invalid password) for batchId={}. Failed attempts: {}", batchId,
-                    user.getFailedAttempts());
-            throw new RuntimeException("Invalid credentials");
+
+            log.warn("Invalid password for batchId={}", batchId);
+            return "INVALID";
         }
 
+        // ✅ Reset failed attempts
         user.setFailedAttempts(0);
         userRepository.save(user);
 
+        // ✅ Password reset flow
         if ("RESET_REQUIRED".equals(user.getStatus())) {
             return "RESET_REQUIRED";
         }
 
+        // 🔥 Generate OTP
         String otp = generateOtp();
+
         otpSessionRepository.deleteByBatchId(batchId);
 
         otpSessionRepository.save(
                 OtpSession.builder()
                         .batchId(batchId)
                         .otpHash(encoder.encode(otp))
-                        .expiresAt(LocalDateTime.now().plusSeconds(otpExpirationSeconds)) // Dynamically injected expiry
-                                                                                          // buffer
+                        .expiresAt(LocalDateTime.now().plusSeconds(otpExpirationSeconds))
                         .verified(false)
                         .attempts(0)
                         .build());
 
-        // SMS Simulation Log for Demo
-        String maskedMobile = "******9842";
+        // 🔐 Demo logging
+        String maskedMobile = "******0000";
         if (user.getMobile() != null && user.getMobile().length() >= 4) {
             int len = user.getMobile().length();
             maskedMobile = "******" + user.getMobile().substring(len - 4);
         }
-        log.info("🔐 [SECURITY] OTP sent to {}: {}", maskedMobile, otp);
 
+        log.info("🔐 OTP sent to {}: {}", maskedMobile, otp);
+
+        // ✅ Demo mode
         if (demoMode) {
             return "DEMO_" + maskedMobile + "_" + otp;
         }
@@ -93,43 +106,48 @@ public class AuthService {
         return "OTP_REQUIRED";
     }
 
-    // OTP VERIFY + SESSION TOKEN GENERATION
+    // 🔥 OTP VERIFY
     public String verifyOtp(String batchId, String otp) {
 
-        OtpSession session = otpSessionRepository.findByBatchId(batchId)
-                .orElseThrow(() -> new RuntimeException("OTP not found"));
+        OtpSession session = otpSessionRepository.findByBatchId(batchId).orElse(null);
+
+        if (session == null) {
+            log.warn("OTP not found for batchId={}", batchId);
+            return "INVALID_OTP";
+        }
 
         if (session.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("OTP expired");
+            return "OTP_EXPIRED";
         }
 
         if (session.isVerified()) {
-            throw new RuntimeException("OTP already used");
+            return "OTP_ALREADY_USED";
         }
 
         if (session.getAttempts() >= 3) {
-            throw new RuntimeException("Maximum OTP attempts exceeded");
+            return "OTP_ATTEMPTS_EXCEEDED";
         }
 
         if (!encoder.matches(otp, session.getOtpHash())) {
             session.setAttempts(session.getAttempts() + 1);
             otpSessionRepository.save(session);
+
             logAttempt(batchId, false, "OTP_FAILED");
-            log.warn("OTP verification denied (invalid OTP) for batchId={}. Attempts used: {}", batchId,
-                    session.getAttempts());
-            throw new RuntimeException("Invalid OTP");
+            return "INVALID_OTP";
         }
 
+        // ✅ Success
         session.setVerified(true);
         otpSessionRepository.save(session);
 
         logAttempt(batchId, true, "SUCCESS");
-        log.info("OTP verification successful. Session granted for batchId={}", batchId);
 
-        // 🔐 SESSION TOKEN (Robust JWT generation)
+        log.info("OTP verified for batchId={}", batchId);
+
         return jwtUtil.generateToken(batchId);
     }
 
+    // 🔥 LOGGING
     private void logAttempt(String batchId, boolean success, String reason) {
         loginAttemptRepository.save(
                 LoginAttempt.builder()

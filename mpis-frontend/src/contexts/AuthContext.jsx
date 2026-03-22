@@ -15,61 +15,80 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    // Step 1: Validate Officer ID & Password
+    // 🔥 STEP 1: LOGIN (FIXED → JSON)
     const login = async (batchId, password) => {
         try {
-            const formData = new URLSearchParams();
-            formData.append('batchId', batchId);
-            formData.append('password', password);
-
-            const response = await api.post('/auth/login', formData, {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            const response = await api.post('/auth/login', {
+                batchId,
+                password
             });
 
-            if (response.data.status === 'OTP_REQUIRED') {
+            const data = response.data;
+
+            if (data.status === 'OTP_REQUIRED') {
                 return {
                     success: true,
                     requiresOtp: true,
-                    message: response.data.message,
-                    demoOtp: response.data.data?.demoOtp
+                    message: data.message,
+                    demoOtp: data.data?.demoOtp,
+                    maskedMobile: data.data?.maskedMobile
                 };
             }
-            throw new Error(response.data.message || 'Unexpected authentication response');
+
+            throw new Error(data.message || 'Unexpected response');
+
         } catch (error) {
             console.error('Login error:', error);
+
             const status = error.response?.data?.status;
-            const msg = error.response?.data?.message || 'Invalid ID or Password. Access Denied.';
+            const msg = error.response?.data?.message || 'Invalid ID or Password';
+
             throw { status: status || 'ERROR', message: msg };
         }
     };
 
-    // Step 2: Validate OTP
+    // 🔥 STEP 2: OTP VERIFY (FIXED → JSON)
     const verifyOtp = async (batchId, otp) => {
         try {
-            const formData = new URLSearchParams();
-            formData.append('batchId', batchId);
-            formData.append('otp', otp);
-
-            const response = await api.post('/auth/otp/verify', formData, {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            const response = await api.post('/auth/otp/verify', {
+                batchId,
+                otp
             });
 
-            if (response.data.status === 'SUCCESS' && response.data.data?.token) {
-                const userData = { batchId, role: 'OFFICER' };
+            const data = response.data;
+
+            if (data.status === 'SUCCESS' && data.data?.token) {
+
+                const token = data.data.token;
+
+                // 🔥 Store token
+                localStorage.setItem('token', token);
+
+                // 🔥 Better user object
+                const userData = {
+                    batchId,
+                    role: data.data?.role || 'OFFICER'
+                };
+
                 localStorage.setItem('user', JSON.stringify(userData));
-                localStorage.setItem('token', response.data.data.token);
                 setUser(userData);
+
                 return { success: true };
             }
-            throw new Error(response.data.message || 'Invalid OTP');
+
+            throw new Error(data.message || 'Invalid OTP');
+
         } catch (error) {
-            console.error('OTP Verification error:', error);
+            console.error('OTP error:', error);
+
             const status = error.response?.data?.status;
-            const msg = error.response?.data?.message || 'Invalid or Expired OTP.';
+            const msg = error.response?.data?.message || 'Invalid or Expired OTP';
+
             throw { status: status || 'ERROR', message: msg };
         }
     };
 
+    // 🔥 LOGOUT
     const logout = () => {
         localStorage.removeItem('user');
         localStorage.removeItem('token');

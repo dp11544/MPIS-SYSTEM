@@ -1,7 +1,6 @@
 import axios from 'axios';
 import toast from '../utils/toast';
 
-// ✅ FIXED BASE URL
 const BASE_URL = "https://mpis-backend.onrender.com/api";
 
 let _isRedirecting = false;
@@ -11,7 +10,7 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 60000, // 🔥 increased
+    timeout: 60000,
 });
 
 export const silentApi = axios.create({
@@ -22,19 +21,25 @@ export const silentApi = axios.create({
     timeout: 60000,
 });
 
-// 🔐 Attach token
+// 🔐 SAFE TOKEN ATTACH
 const attachToken = (config) => {
     const token = localStorage.getItem('token');
+
+    if (!config.headers) {
+        config.headers = {};
+    }
+
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
 };
 
 api.interceptors.request.use(attachToken);
 silentApi.interceptors.request.use(attachToken);
 
-// 🔥 Error handler
+// 🔥 Common error handler
 const handleCommonErrors = (status, message) => {
     switch (status) {
         case 400:
@@ -57,9 +62,30 @@ const handleCommonErrors = (status, message) => {
     }
 };
 
-// 🔥 Response interceptor
+// 🔥 Response interceptor (FIXED)
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        const data = response.data;
+
+        // 🔥 HANDLE BUSINESS STATUS (VERY IMPORTANT)
+        if (data?.status === "INVALID") {
+            toast.error("Invalid ID or Password");
+            return Promise.reject(response);
+        }
+
+        if (data?.status === "LOCKED") {
+            toast.error("Account locked");
+            return Promise.reject(response);
+        }
+
+        if (data?.status === "ERROR") {
+            toast.error("Server error");
+            return Promise.reject(response);
+        }
+
+        return response;
+    },
+
     async (error) => {
         if (!error.response) {
             toast.error("Network error / server sleeping");
@@ -69,7 +95,11 @@ api.interceptors.response.use(
         const { status, data } = error.response;
         const message = data?.message || "Error";
 
-        if (status === 401) {
+        // 🔥 FIX: DON'T REDIRECT for auth endpoints
+        const url = error.config?.url || "";
+
+        if (status === 401 && !url.includes("/auth")) {
+
             if (_isRedirecting) return Promise.reject(error);
             _isRedirecting = true;
 

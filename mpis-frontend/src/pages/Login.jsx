@@ -5,82 +5,103 @@ import { useAuth } from '../contexts/AuthContext';
 import '../features/login.css';
 
 const Login = () => {
-    // Stage 1: Credentials
-    const [username, setUsername] = useState('admin');
+
+    // 🔥 FIX: use batchId (correct naming)
+    const [batchId, setBatchId] = useState('admin');
     const [password, setPassword] = useState('admin');
 
-    // Stage 2: OTP
-    const [step, setStep] = useState('CREDENTIALS'); // 'CREDENTIALS' | 'OTP'
+    // OTP stage
+    const [step, setStep] = useState('CREDENTIALS');
     const [otp, setOtp] = useState('');
     const [timeLeft, setTimeLeft] = useState(120);
 
-    // General UI
+    // UI
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
     const { login, verifyOtp } = useAuth();
     const navigate = useNavigate();
 
-    // OTP Timer countdown
+    // 🔥 Auto redirect if already logged in
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            navigate('/dashboard');
+        }
+    }, []);
+
+    // 🔥 OTP Timer
     useEffect(() => {
         let timer;
+
         if (step === 'OTP' && timeLeft > 0) {
             timer = setInterval(() => {
                 setTimeLeft(prev => prev - 1);
             }, 1000);
-        } else if (timeLeft === 0 && step === 'OTP') {
-            setError('OTP Expired. Please login again.');
+        }
+
+        if (timeLeft === 0 && step === 'OTP') {
+            setError('OTP expired. Please login again.');
             setStep('CREDENTIALS');
             setOtp('');
         }
+
         return () => clearInterval(timer);
     }, [step, timeLeft]);
 
+    // 🔥 LOGIN STEP
     const handleCredentialsSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
 
         try {
-            const result = await login(username, password);
+            const result = await login(batchId, password);
+
             if (result.requiresOtp) {
                 setStep('OTP');
-                setTimeLeft(120); // Reset visual timer to 2 minutes
+                setTimeLeft(120);
 
-                // Demo Mode Injection
-                if (result.demoOtp) {
-                    setOtp(result.demoOtp);
-                } else {
-                    setOtp('');
-                }
+                // 🔥 Reset OTP cleanly
+                setOtp(result.demoOtp || '');
+
+                // Optional debug
+                console.log("OTP sent to:", result.maskedMobile);
             }
+
         } catch (err) {
-            setError(err.message || 'Invalid ID or Password. Access Denied.');
+            setError(err.message || 'Invalid ID or Password');
         } finally {
             setIsLoading(false);
         }
     };
 
+    // 🔥 OTP VERIFY STEP
     const handleOtpSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
 
         try {
-            await verifyOtp(username, otp);
+            await verifyOtp(batchId, otp);
+
+            // 🔥 SUCCESS → redirect
             navigate('/dashboard');
+
         } catch (err) {
             if (err.status === 'OTP_EXPIRED') {
                 setError('Session expired. Please login again.');
                 setStep('CREDENTIALS');
                 setOtp('');
             } else {
-                setError(err.message || 'Invalid OTP.');
+                setError(err.message || 'Invalid OTP');
             }
         } finally {
             setIsLoading(false);
         }
     };
 
+    // 🔥 Time format
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
@@ -92,6 +113,7 @@ const Login = () => {
             <div className="login-overlay"></div>
 
             <div className="login-card glass-panel">
+
                 <div className="login-header">
                     <div className="logo-spinner-container">
                         <Shield className="logo-icon" size={64} color="var(--brand-blue)" />
@@ -103,15 +125,17 @@ const Login = () => {
                 </div>
 
                 {step === 'CREDENTIALS' ? (
+
                     <form onSubmit={handleCredentialsSubmit}>
+
                         <div className="form-group">
                             <label>Officer ID</label>
                             <div className="input-icon-wrapper">
                                 <Shield size={18} className="input-icon" />
                                 <input
                                     type="text"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
+                                    value={batchId}
+                                    onChange={(e) => setBatchId(e.target.value)}
                                     placeholder="Enter Badge Number"
                                     disabled={isLoading}
                                     required
@@ -120,7 +144,7 @@ const Login = () => {
                         </div>
 
                         <div className="form-group">
-                            <label>Secure Key</label>
+                            <label>Password</label>
                             <div className="input-icon-wrapper">
                                 <Lock size={18} className="input-icon" />
                                 <input
@@ -146,16 +170,20 @@ const Login = () => {
                             )}
                         </button>
                     </form>
+
                 ) : (
+
                     <form onSubmit={handleOtpSubmit}>
-                        <div style={{ textAlign: 'center', marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>
-                            <Lock size={32} color="var(--brand-blue)" style={{ margin: '0 auto 10px auto' }} />
+
+                        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                            <Lock size={32} color="var(--brand-blue)" />
                             <p><strong>Two-Factor Authentication</strong></p>
-                            <p style={{ fontSize: '0.85rem', marginTop: '5px' }}>
-                                A one-time passcode has been sent to your registered device.<br />
-                                {otp ? <span style={{ color: 'var(--brand-blue)', fontWeight: 'bold' }}>Demo Mode: OTP Auto-Filled</span> : "Check your device to verify your identity."}
-                            </p>
-                            <div style={{ marginTop: '10px', fontSize: '1.2rem', fontWeight: 'bold', color: timeLeft <= 30 ? 'var(--status-alert)' : 'var(--text-primary)' }}>
+
+                            <div style={{
+                                marginTop: '10px',
+                                fontSize: '1.2rem',
+                                fontWeight: 'bold'
+                            }}>
                                 {formatTime(timeLeft)}
                             </div>
                         </div>
@@ -171,17 +199,23 @@ const Login = () => {
                                     placeholder="Enter OTP"
                                     disabled={isLoading}
                                     maxLength="6"
-                                    pattern="\d{6}"
-                                    autoComplete="off"
                                     required
-                                    style={{ letterSpacing: '4px', textAlign: 'center', fontSize: '1.1rem' }}
+                                    style={{
+                                        letterSpacing: '4px',
+                                        textAlign: 'center',
+                                        fontSize: '1.1rem'
+                                    }}
                                 />
                             </div>
                         </div>
 
                         {error && <div className="error-message">{error}</div>}
 
-                        <button type="submit" className="login-btn" disabled={isLoading || otp.length < 6}>
+                        <button
+                            type="submit"
+                            className="login-btn"
+                            disabled={isLoading || !/^\d{6}$/.test(otp)}
+                        >
                             {isLoading ? (
                                 <span className="loading-text">
                                     <Activity className="spin" size={18} /> Verifying...
@@ -193,19 +227,24 @@ const Login = () => {
 
                         <button
                             type="button"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', width: '100%', marginTop: '15px', cursor: 'pointer', textDecoration: 'underline' }}
-                            onClick={() => setStep('CREDENTIALS')}
+                            className="cancel-btn"
+                            onClick={() => {
+                                setStep('CREDENTIALS');
+                                setOtp('');
+                            }}
                             disabled={isLoading}
                         >
                             Cancel
                         </button>
+
                     </form>
                 )}
 
                 <div className="login-footer">
                     <p>UNAUTHORIZED ACCESS IS A CRIMINAL OFFENSE</p>
-                    <p>System v2.0 | Connection Secure</p>
+                    <p>System v2.0 | Secure</p>
                 </div>
+
             </div>
         </div>
     );

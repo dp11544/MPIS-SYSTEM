@@ -4,7 +4,7 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -17,7 +17,11 @@ public class LoginAttempt {
     private String id;
 
     private String batchId;
-    private LocalDateTime timestamp;
+
+    // 🔥 FIX: Use Instant instead of LocalDateTime
+    private Instant timestamp;
+
     private boolean success;
+
     private String reason; // WRONG_PASSWORD / LOCKED / OTP_FAILED
 }

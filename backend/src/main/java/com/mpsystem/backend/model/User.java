@@ -4,7 +4,7 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -20,11 +20,14 @@ public class User {
     private String passwordHash;
     private String mobile;
 
-    private String role; // OFFICER / ADMIN
+    private String role;   // OFFICER / ADMIN
     private String status; // RESET_REQUIRED / ACTIVE / LOCKED
 
     private int failedAttempts;
-    private LocalDateTime lockUntil;
 
-    private LocalDateTime createdAt;
+    // 🔥 FIX: LocalDateTime → Instant
+    private Instant lockUntil;
+
+    // 🔥 FIX: LocalDateTime → Instant
+    private Instant createdAt;
 }

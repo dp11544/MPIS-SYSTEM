@@ -1,9 +1,11 @@
 spring:
   application:
     name: backend
+
   data:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/mpis_db}
+
   servlet:
     multipart:
       enabled: true
@@ -13,33 +15,35 @@ spring:
 server:
   port: 8080
 
-# Demo Mode Config
+# 🔥 OTP CONFIG
 otp:
   demo-mode: true
   expiration-seconds: 130
 
-# MPIS Production Observability
+# 🔥 MPIS CONFIG (IMPORTANT)
+mpis:
+  ai:
+    similarity-threshold: 0.65
+    # 🔥 PRODUCTION URL (Railway)
+    engine-url: ${MPIS_AI_ENGINE_URL:https://mpis-ai-engine-production-a3a3.up.railway.app}
+
+  cache:
+    dedup-window-seconds: 5
+
+  jwt:
+    secret: ${MPIS_JWT_SECRET:abcefg1234567890mnopqrstuvwxyzABCEFG1234567890MNOPQRS}
+    expiration-ms: 86400000
+
+# 🔥 ACTUATOR
 management:
   endpoints:
     web:
       exposure:
         include: health,info,prometheus
+
   endpoint:
     health:
       show-details: ALWAYS
+
     prometheus:
       enabled: true
-
-# Centralized Business Logic Configuration
-mpis:
-  ai:
-    # Must match AI Engine SIMILARITY_THRESHOLD (0.65)
-    similarity-threshold: 0.65
-    engine-url: ${MPIS_AI_ENGINE_URL:http://127.0.0.1:5000}
-  cache:
-    dedup-window-seconds: 5
-  jwt:
-    # PRODUCTION: Use environment variable MPIS_JWT_SECRET
-    # Current value is for development only
-    secret: "${MPIS_JWT_SECRET:abcefg1234567890mnopqrstuvwxyzABCEFG1234567890MNOPQRS}"
-    expiration-ms: 86400000  # 24 hours

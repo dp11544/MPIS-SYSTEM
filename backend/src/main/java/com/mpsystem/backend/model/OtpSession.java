@@ -4,7 +4,7 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -17,8 +17,13 @@ public class OtpSession {
     private String id;
 
     private String batchId;
+
     private String otpHash;
-    private LocalDateTime expiresAt;
+
+    // 🔥 FIX: LocalDateTime → Instant
+    private Instant expiresAt;
+
     private boolean verified;
+
     private int attempts;
 }

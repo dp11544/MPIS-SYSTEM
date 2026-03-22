@@ -1,9 +1,7 @@
 package com.mpsystem.backend.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.*;
 
 import java.util.Map;
 
@@ -14,15 +12,32 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL) // 🔥 removes null fields in response
 public class AuthResponse {
 
-    // 🔥 STATUS TYPES:
     // SUCCESS, INVALID, OTP_REQUIRED, RESET_REQUIRED, LOCKED, ERROR
     private String status;
 
     // Human-readable message
     private String message;
 
-    // Flexible structured data (token, otp, etc.)
+    // Optional data (token, otp, etc.)
     private Map<String, Object> data;
+
+    // 🔥 Helper: success response
+    public static AuthResponse success(String message, Map<String, Object> data) {
+        return AuthResponse.builder()
+                .status("SUCCESS")
+                .message(message)
+                .data(data)
+                .build();
+    }
+
+    // 🔥 Helper: error response
+    public static AuthResponse error(String message) {
+        return AuthResponse.builder()
+                .status("ERROR")
+                .message(message)
+                .build();
+    }
 }

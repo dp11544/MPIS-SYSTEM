@@ -1,6 +1,5 @@
 package com.mpsystem.backend.controller;
 
-import com.mpsystem.backend.service.UserProvisionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -9,11 +8,11 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AdminController {
 
-    private final UserProvisionService userProvisionService;
+    // 🔥 TEMP: remove service until implemented
 
     @PostMapping("/users")
     public String createUser(@RequestParam String batchId,
                              @RequestParam String mobile) {
-        return userProvisionService.createOfficer(batchId, mobile);
+        return "UserProvisionService not implemented yet";
     }
 }

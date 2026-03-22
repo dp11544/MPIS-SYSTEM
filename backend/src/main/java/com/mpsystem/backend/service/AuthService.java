@@ -8,7 +8,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Random;
 
 import com.mpsystem.backend.util.JwtUtil;
@@ -35,13 +35,11 @@ public class AuthService {
 
         try {
 
-            // 🔥 NULL INPUT GUARD
             if (batchId == null || password == null) {
                 log.warn("Null input received");
                 return "INVALID";
             }
 
-            // 🔥 SAFE DB CALL
             User user = userRepository.findByBatchId(batchId).orElse(null);
 
             if (user == null) {
@@ -50,22 +48,20 @@ public class AuthService {
                 return "INVALID";
             }
 
-            // 🔥 PASSWORD HASH CHECK
             String hash = user.getPasswordHash();
             if (hash == null || hash.isEmpty()) {
                 log.error("Password hash missing for {}", batchId);
                 return "INVALID";
             }
 
-            // 🔥 ACCOUNT LOCK CHECK
+            // 🔥 FIX: Instant instead of LocalDateTime
             if (user.getLockUntil() != null &&
-                user.getLockUntil().isAfter(LocalDateTime.now())) {
+                user.getLockUntil().isAfter(Instant.now())) {
 
                 logAttempt(batchId, false, "LOCKED");
                 return "LOCKED";
             }
 
-            // 🔥 SAFE PASSWORD MATCH
             boolean passwordMatch;
             try {
                 passwordMatch = encoder.matches(password, hash);
@@ -79,7 +75,8 @@ public class AuthService {
                 user.setFailedAttempts(user.getFailedAttempts() + 1);
 
                 if (user.getFailedAttempts() >= 3) {
-                    user.setLockUntil(LocalDateTime.now().plusHours(24));
+                    // 🔥 FIX
+                    user.setLockUntil(Instant.now().plusSeconds(86400));
                     user.setStatus("LOCKED");
                 }
 
@@ -89,31 +86,28 @@ public class AuthService {
                 return "INVALID";
             }
 
-            // ✅ RESET FAILED ATTEMPTS
             user.setFailedAttempts(0);
             userRepository.save(user);
 
-            // 🔁 RESET REQUIRED
             if ("RESET_REQUIRED".equals(user.getStatus())) {
                 return "RESET_REQUIRED";
             }
 
-            // 🔥 GENERATE OTP
             String otp = generateOtp();
 
+            // 🔥 safer delete
             otpSessionRepository.deleteByBatchId(batchId);
 
             otpSessionRepository.save(
                 OtpSession.builder()
                     .batchId(batchId)
                     .otpHash(encoder.encode(otp))
-                    .expiresAt(LocalDateTime.now().plusSeconds(otpExpirationSeconds))
+                    .expiresAt(Instant.now().plusSeconds(otpExpirationSeconds)) // 🔥 FIX
                     .verified(false)
                     .attempts(0)
                     .build()
             );
 
-            // 🔥 MASK MOBILE
             String maskedMobile = "******0000";
             if (user.getMobile() != null && user.getMobile().length() >= 4) {
                 int len = user.getMobile().length();
@@ -142,7 +136,8 @@ public class AuthService {
 
             if (session == null) return "INVALID_OTP";
 
-            if (session.getExpiresAt().isBefore(LocalDateTime.now()))
+            // 🔥 FIX
+            if (session.getExpiresAt().isBefore(Instant.now()))
                 return "OTP_EXPIRED";
 
             if (session.isVerified())
@@ -172,7 +167,7 @@ public class AuthService {
         loginAttemptRepository.save(
             LoginAttempt.builder()
                 .batchId(batchId)
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now()) // 🔥 FIX
                 .success(success)
                 .reason(reason)
                 .build()

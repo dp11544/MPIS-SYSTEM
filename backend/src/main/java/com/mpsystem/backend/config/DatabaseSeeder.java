@@ -8,7 +8,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
@@ -17,12 +17,19 @@ public class DatabaseSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
 
-    @Override
-    public void run(String... args) throws Exception {
-        if (userRepository.findByBatchId("admin").isEmpty()) {
-            log.info("🔐 No admin user found. Bootstrapping default admin account for demo purpose...");
+    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    @Override
+    public void run(String... args) {
+
+        try {
+
+            if (userRepository.findByBatchId("admin").isPresent()) {
+                log.info("✅ Admin already exists. Skipping seeding.");
+                return;
+            }
+
+            log.info("🔐 Creating default admin user...");
 
             User admin = User.builder()
                     .batchId("admin")
@@ -31,11 +38,16 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .role("ADMIN")
                     .status("ACTIVE")
                     .failedAttempts(0)
-                    .createdAt(LocalDateTime.now())
+                    .createdAt(Instant.now())   // 🔥 FIX
+                    .lockUntil(null)            // 🔥 IMPORTANT
                     .build();
 
             userRepository.save(admin);
-            log.info("✅ Default admin account created (ID: admin, Password: admin)");
+
+            log.info("✅ Admin created → ID: admin | Password: admin");
+
+        } catch (Exception e) {
+            log.error("❌ Failed to seed admin user", e);
         }
     }
 }

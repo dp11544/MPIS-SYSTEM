@@ -71,20 +71,20 @@ public class AuthFilter implements Filter {
     /**
      * ✅ FIXED: Public endpoints (LOGIN MUST BE HERE)
      */
-    private boolean isPublicEndpoint(String path) {
-        return path.startsWith("/api/auth") ||   // normal case
-               path.startsWith("/auth") ||       // 🔥 FIX for your issue
-               path.startsWith("/api/persons") ||
-               path.startsWith("/api/realtime") ||
-               path.startsWith("/api/cameras") ||
-               path.startsWith("/api/alerts") ||
-               path.startsWith("/api/match") ||
-               path.startsWith("/uploads/") ||
-               path.startsWith("/actuator") ||
-               path.startsWith("/health") ||
-               path.startsWith("/ws-alerts");
-    }
-
+   private boolean isPublicEndpoint(String path) {
+    return path.startsWith("/api/auth") ||
+           path.startsWith("/auth") ||
+           path.startsWith("/api/system") ||   // 🔥 ADD THIS (YOUR FIX)
+           path.startsWith("/api/persons") ||
+           path.startsWith("/api/realtime") ||
+           path.startsWith("/api/cameras") ||
+           path.startsWith("/api/alerts") ||
+           path.startsWith("/api/match") ||
+           path.startsWith("/uploads/") ||
+           path.startsWith("/actuator") ||
+           path.startsWith("/health") ||
+           path.startsWith("/ws-alerts");
+}
     /**
      * Extract JWT token
      */

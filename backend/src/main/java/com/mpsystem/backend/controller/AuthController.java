@@ -20,26 +20,51 @@ public class AuthController {
 
     private final AuthService authService;
 
-    // 🔥 LOGIN API
+    // 🔥 LOGIN API (FULL SAFE VERSION)
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
 
-        String status = authService.login(
-                loginRequest.getBatchId(),
-                loginRequest.getPassword()
-        );
-
         AuthResponse response = new AuthResponse();
+        String status;
 
-        // 🔥 DEMO MODE (OTP RETURN)
+        try {
+            status = authService.login(
+                    loginRequest.getBatchId(),
+                    loginRequest.getPassword()
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+
+            response.setStatus("ERROR");
+            response.setMessage("Internal server error");
+
+            return ResponseEntity.ok(response);
+        }
+
+        // 🔥 NULL SAFETY
+        if (status == null) {
+            response.setStatus("ERROR");
+            response.setMessage("Null response from server");
+            return ResponseEntity.ok(response);
+        }
+
+        // 🔥 DEMO MODE
         if (status.startsWith("DEMO_")) {
+
             String[] parts = status.split("_");
 
+            if (parts.length < 3) {
+                response.setStatus("ERROR");
+                response.setMessage("Invalid demo response");
+                return ResponseEntity.ok(response);
+            }
+
             response.setStatus("OTP_REQUIRED");
-            response.setMessage("DEMO MODE ACTIVE: " + parts[2] + " (Sent to " + parts[1] + ")");
+            response.setMessage("DEMO MODE ACTIVE");
 
             Map<String, Object> data = new HashMap<>();
             data.put("demoOtp", parts[2]);
+            data.put("maskedMobile", parts[1]);
 
             response.setData(data);
         }
@@ -68,6 +93,12 @@ public class AuthController {
             response.setMessage("Invalid ID or Password.");
         }
 
+        // 🔥 INTERNAL ERROR FROM SERVICE
+        else if ("ERROR".equals(status)) {
+            response.setStatus("ERROR");
+            response.setMessage("Login failed internally.");
+        }
+
         // 🔥 FALLBACK
         else {
             response.setStatus("ERROR");
@@ -77,19 +108,30 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // 🔥 OTP VERIFY API
+    // 🔥 OTP VERIFY API (SAFE)
     @PostMapping("/otp/verify")
     public ResponseEntity<AuthResponse> verifyOtp(@Valid @RequestBody OtpVerifyRequest request) {
 
-        String result = authService.verifyOtp(
-                request.getBatchId(),
-                request.getOtp()
-        );
-
         AuthResponse response = new AuthResponse();
+        String result;
 
-        // 🔥 SUCCESS
-        if (!result.startsWith("INVALID") &&
+        try {
+            result = authService.verifyOtp(
+                    request.getBatchId(),
+                    request.getOtp()
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+
+            response.setStatus("ERROR");
+            response.setMessage("OTP verification failed.");
+
+            return ResponseEntity.ok(response);
+        }
+
+        // 🔥 SUCCESS (TOKEN RETURN)
+        if (result != null &&
+            !result.startsWith("INVALID") &&
             !result.contains("EXPIRED") &&
             !result.contains("ATTEMPTS")) {
 
@@ -126,7 +168,7 @@ public class AuthController {
             response.setMessage("OTP already used.");
         }
 
-        // 🔥 FALLBACK
+        // 🔥 ERROR
         else {
             response.setStatus("ERROR");
             response.setMessage("OTP verification failed.");

@@ -75,8 +75,8 @@ const Alerts = () => {
             }) : 'N/A';
         
         const photoUrl = personPhotos[alertData.personId] 
-            ? `http://localhost:8080/${personPhotos[alertData.personId]}` 
-            : null;
+    ? `https://mpis-backend.onrender.com/${personPhotos[alertData.personId]}` 
+    : null;
 
         const printContent = `
             <!DOCTYPE html>
@@ -888,7 +888,7 @@ const Alerts = () => {
                                     }}>
                                         {personPhotos[selectedAlert.personId] ? (
                                             <img 
-                                                src={`http://localhost:8080/${personPhotos[selectedAlert.personId]}`} 
+                                                src={`https://mpis-backend.onrender.com/${personPhotos[selectedAlert.personId]}`}
                                                 alt="Subject Photo" 
                                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                             />

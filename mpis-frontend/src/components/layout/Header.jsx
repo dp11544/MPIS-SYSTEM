@@ -199,7 +199,7 @@ const Header = () => {
                                                 }}>
                                                     {alert.photoPath ? (
                                                         <img 
-                                                            src={`http://localhost:8080/${alert.photoPath}`}
+                                                            src={`https://mpis-backend.onrender.com/${alert.photoPath}`}
                                                             alt=""
                                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                         />

@@ -75,7 +75,7 @@ const Registry = () => {
     // Generate Case File PDF
     const generateCaseFilePDF = (person) => {
         const isLocated = locatedPersons.has(person.id);
-        const photoUrl = person.photoPath ? `http://localhost:8080/${person.photoPath}` : null;
+        const photoUrl = person.photoPath ? `https://mpis-backend.onrender.com/${person.photoPath}` : null;
         
         const printContent = `
             <!DOCTYPE html>
@@ -704,7 +704,7 @@ const Registry = () => {
                                             }}>
                                                 {person.photoPath ? (
                                                     <img 
-                                                        src={`http://localhost:8080/${person.photoPath}`} 
+                                                        src={`https://mpis-backend.onrender.com/${person.photoPath}`}  
                                                         alt={person.name} 
                                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                                     />
@@ -958,7 +958,7 @@ const Registry = () => {
                                 }}>
                                     {selectedPerson.photoPath ? (
                                         <img 
-                                            src={`http://localhost:8080/${selectedPerson.photoPath}`}
+                                             src={`https://mpis-backend.onrender.com/${selectedPerson.photoPath}`}
                                             alt={selectedPerson.name}
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />

@@ -161,7 +161,7 @@ const OfficialCaseFilePage = () => {
                                     <div style={styles.photoFrame}>
                                         {person.photoPath ? (
                                             <img 
-                                                src={`http://localhost:8080/${person.photoPath}`}
+                                                src={`https://mpis-backend.onrender.com/${person.photoPath}`}
                                                 alt="Subject"
                                                 style={styles.photo}
                                             />

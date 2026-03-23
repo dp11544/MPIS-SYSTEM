@@ -1,12 +1,16 @@
 import axios from 'axios';
 import toast from '../utils/toast';
 
-const BASE_URL = "https://mpis-backend.onrender.com/api";
+/**
+ * ✅ USE ENV VARIABLE (IMPORTANT)
+ */
+const BASE_URL = import.meta.env.VITE_API_URL;
 
-let _isRedirecting = false;
-
+/**
+ * 🔥 API instances
+ */
 const api = axios.create({
-    baseURL: BASE_URL,
+    baseURL: `${BASE_URL}/api`,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -14,20 +18,22 @@ const api = axios.create({
 });
 
 export const silentApi = axios.create({
-    baseURL: BASE_URL,
+    baseURL: `${BASE_URL}/api`,
     headers: {
         'Content-Type': 'application/json',
     },
     timeout: 60000,
 });
 
-// 🔐 SAFE TOKEN ATTACH
+let _isRedirecting = false;
+
+/**
+ * 🔐 Attach JWT token
+ */
 const attachToken = (config) => {
     const token = localStorage.getItem('token');
 
-    if (!config.headers) {
-        config.headers = {};
-    }
+    if (!config.headers) config.headers = {};
 
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -39,7 +45,9 @@ const attachToken = (config) => {
 api.interceptors.request.use(attachToken);
 silentApi.interceptors.request.use(attachToken);
 
-// 🔥 Common error handler
+/**
+ * 🔥 Common error handler
+ */
 const handleCommonErrors = (status, message) => {
     switch (status) {
         case 400:
@@ -62,12 +70,13 @@ const handleCommonErrors = (status, message) => {
     }
 };
 
-// 🔥 Response interceptor (FIXED)
+/**
+ * 🔥 Response interceptor
+ */
 api.interceptors.response.use(
     (response) => {
         const data = response.data;
 
-        // 🔥 HANDLE BUSINESS STATUS (VERY IMPORTANT)
         if (data?.status === "INVALID") {
             toast.error("Invalid ID or Password");
             return Promise.reject(response);
@@ -94,8 +103,6 @@ api.interceptors.response.use(
 
         const { status, data } = error.response;
         const message = data?.message || "Error";
-
-        // 🔥 FIX: DON'T REDIRECT for auth endpoints
         const url = error.config?.url || "";
 
         if (status === 401 && !url.includes("/auth")) {
@@ -122,6 +129,9 @@ api.interceptors.response.use(
     }
 );
 
+/**
+ * 🔥 Silent API (no toast)
+ */
 silentApi.interceptors.response.use(
     (response) => response,
     (error) => Promise.reject(error)

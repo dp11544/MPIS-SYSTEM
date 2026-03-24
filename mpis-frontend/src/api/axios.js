@@ -2,15 +2,19 @@ import axios from 'axios';
 import toast from '../utils/toast';
 
 /**
- * ✅ USE ENV VARIABLE (IMPORTANT)
+ * ✅ ENV VALIDATION (CRITICAL)
  */
 const BASE_URL = import.meta.env.VITE_API_URL;
+
+if (!BASE_URL) {
+    throw new Error("VITE_API_URL is not defined. Check your env variables.");
+}
 
 /**
  * 🔥 API instances
  */
 const api = axios.create({
-    baseURL: `${BASE_URL}/api`,
+    baseURL: BASE_URL, // ❗ removed /api for flexibility
     headers: {
         'Content-Type': 'application/json',
     },
@@ -18,7 +22,7 @@ const api = axios.create({
 });
 
 export const silentApi = axios.create({
-    baseURL: `${BASE_URL}/api`,
+    baseURL: BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -51,7 +55,7 @@ silentApi.interceptors.request.use(attachToken);
 const handleCommonErrors = (status, message) => {
     switch (status) {
         case 400:
-            toast.error(message);
+            toast.error(message || "Bad request");
             break;
         case 403:
             toast.error("Access denied");
@@ -105,6 +109,9 @@ api.interceptors.response.use(
         const message = data?.message || "Error";
         const url = error.config?.url || "";
 
+        /**
+         * 🔐 Handle 401 (Session Expired)
+         */
         if (status === 401 && !url.includes("/auth")) {
 
             if (_isRedirecting) return Promise.reject(error);
@@ -117,8 +124,10 @@ api.interceptors.response.use(
 
             try {
                 const { default: webSocketService } = await import('../services/WebSocketService');
-                webSocketService.disconnect();
-            } catch {}
+                webSocketService?.disconnect?.();
+            } catch (e) {
+                console.warn("WebSocket cleanup failed");
+            }
 
             window.location.href = '/login';
         } else {

@@ -2,10 +2,13 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
 /**
- * ✅ FIXED WebSocket URL (IMPORTANT)
- * Always point to backend (Render), NOT frontend (Vercel)
+ * ✅ ENV WebSocket URL (MANDATORY)
  */
-const WS_URL = "https://mpis-backend.onrender.com/ws-alerts";
+const WS_URL = import.meta.env.VITE_WS_URL;
+
+if (!WS_URL) {
+    throw new Error("VITE_WS_URL is not defined. Check your env variables.");
+}
 
 class WebSocketService {
     constructor() {
@@ -41,7 +44,7 @@ class WebSocketService {
             heartbeatIncoming: 10000,
             heartbeatOutgoing: 10000,
 
-            onConnect: (frame) => {
+            onConnect: () => {
                 this._connecting = false;
                 console.log('[WS] Connected ✓');
 

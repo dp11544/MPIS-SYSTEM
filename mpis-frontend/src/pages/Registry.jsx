@@ -7,6 +7,7 @@ import {
     BadgeAlert, Crosshair, Fingerprint, ScanFace, RotateCcw, FileCheck
 } from 'lucide-react';
 import api from '../api/axios';
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const Registry = () => {
     const navigate = useNavigate();
@@ -75,7 +76,9 @@ const Registry = () => {
     // Generate Case File PDF
     const generateCaseFilePDF = (person) => {
         const isLocated = locatedPersons.has(person.id);
-        const photoUrl = person.photoPath ? `https://mpis-backend.onrender.com/${person.photoPath}` : null;
+        const photoUrl = person.photoPath 
+  ? `${BASE_URL}${person.photoPath}` 
+  : null;
         
         const printContent = `
             <!DOCTYPE html>
@@ -704,7 +707,7 @@ const Registry = () => {
                                             }}>
                                                 {person.photoPath ? (
                                                     <img 
-                                                        src={`https://mpis-backend.onrender.com/${person.photoPath}`}  
+                                                        src={`${BASE_URL}${person.photoPath}`}
                                                         alt={person.name} 
                                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                                     />
@@ -958,7 +961,7 @@ const Registry = () => {
                                 }}>
                                     {selectedPerson.photoPath ? (
                                         <img 
-                                             src={`https://mpis-backend.onrender.com/${selectedPerson.photoPath}`}
+                                             src={`${BASE_URL}${selectedPerson.photoPath}`}
                                             alt={selectedPerson.name}
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />

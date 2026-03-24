@@ -6,6 +6,7 @@ import {
     Video, BadgeAlert, Activity, ScanFace, User
 } from 'lucide-react';
 import api, { silentApi } from '../api/axios';
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const Alerts = () => {
     const [alerts, setAlerts] = useState([]);
@@ -75,7 +76,7 @@ const Alerts = () => {
             }) : 'N/A';
         
         const photoUrl = personPhotos[alertData.personId] 
-    ? `https://mpis-backend.onrender.com/${personPhotos[alertData.personId]}` 
+    ? `${BASE_URL}${personPhotos[alertData.personId]}` 
     : null;
 
         const printContent = `
@@ -888,7 +889,7 @@ const Alerts = () => {
                                     }}>
                                         {personPhotos[selectedAlert.personId] ? (
                                             <img 
-                                                src={`https://mpis-backend.onrender.com/${personPhotos[selectedAlert.personId]}`}
+                                                src={`${BASE_URL}${personPhotos[selectedAlert.personId]}`}
                                                 alt="Subject Photo" 
                                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                             />

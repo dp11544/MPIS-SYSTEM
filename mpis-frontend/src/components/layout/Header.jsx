@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import StatusIndicator from '../widgets/StatusIndicator';
 import webSocketService from '../../services/WebSocketService';
 import api from '../../api/axios';
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const Header = () => {
     const { user, logout } = useAuth();
@@ -199,7 +200,7 @@ const Header = () => {
                                                 }}>
                                                     {alert.photoPath ? (
                                                         <img 
-                                                            src={`https://mpis-backend.onrender.com/${alert.photoPath}`}
+                                                           src={`${BASE_URL}${alert.photoPath}`}
                                                             alt=""
                                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                         />

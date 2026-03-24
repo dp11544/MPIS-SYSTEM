@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+const BASE_URL = import.meta.env.VITE_API_URL;
 import { 
     ArrowLeft, Shield, MapPin, Calendar, User, Phone, FileText, 
     Building2, BadgeCheck, Printer, Download
@@ -161,7 +162,7 @@ const OfficialCaseFilePage = () => {
                                     <div style={styles.photoFrame}>
                                         {person.photoPath ? (
                                             <img 
-                                                src={`https://mpis-backend.onrender.com/${person.photoPath}`}
+                                                src={`${BASE_URL}${person.photoPath}`}
                                                 alt="Subject"
                                                 style={styles.photo}
                                             />

@@ -14,7 +14,7 @@ if (!BASE_URL) {
  * 🔥 API instances
  */
 const api = axios.create({
-    baseURL: BASE_URL, // ❗ removed /api for flexibility
+    baseURL: `${BASE_URL}/api`,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -22,7 +22,7 @@ const api = axios.create({
 });
 
 export const silentApi = axios.create({
-    baseURL: BASE_URL,
+    baseURL: `${BASE_URL}/api`, // ✅ FIXED (comma added)
     headers: {
         'Content-Type': 'application/json',
     },

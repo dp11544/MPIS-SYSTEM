@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buildImageUrl } from '../utils/url';
+import { buildImageUrl } from '@/utils/url';
 import { 
     Search, User, MapPin, Calendar, Activity, ChevronRight, 
     ShieldAlert, Phone, Eye, Clock, AlertTriangle, CheckCircle2,

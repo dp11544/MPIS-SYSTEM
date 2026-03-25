@@ -705,7 +705,7 @@ const Registry = () => {
                                                 overflow: 'hidden',
                                                 boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
                                             }}>
-                                                {person.photoPath ? (
+                                                {person.photoPath && person.photoPath.trim() !== "" ? (
                                                     <img 
                                                         src={buildImageUrl(person.photoPath)}
                                                         alt={person.name} 

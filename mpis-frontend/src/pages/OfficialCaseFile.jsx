@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { buildImageUrl } from '../utils/url';
 const BASE_URL = import.meta.env.VITE_API_URL;
 import { 
     ArrowLeft, Shield, MapPin, Calendar, User, Phone, FileText, 
@@ -162,10 +163,14 @@ const OfficialCaseFilePage = () => {
                                     <div style={styles.photoFrame}>
                                         {person.photoPath ? (
                                             <img 
-                                                src={`${BASE_URL}${person.photoPath}`}
-                                                alt="Subject"
-                                                style={styles.photo}
-                                            />
+                                                src={buildImageUrl(person.photoPath)}
+                                                 alt="Subject"
+                                                    style={styles.photo}
+                                                    onError={(e) => {
+                                                    e.target.onerror = null;
+                                                     e.target.src = '/fallback-user.png';
+                                                    }}
+                                                    />
                                         ) : (
                                             <div style={styles.noPhoto}>
                                                 <User size={50} color="#8b7355" />

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { buildImageUrl } from '../utils/url';
 import { 
     Search, User, MapPin, Calendar, Activity, ChevronRight, 
     ShieldAlert, Phone, Eye, Clock, AlertTriangle, CheckCircle2,
@@ -7,7 +8,6 @@ import {
     BadgeAlert, Crosshair, Fingerprint, ScanFace, RotateCcw, FileCheck
 } from 'lucide-react';
 import api from '../api/axios';
-const BASE_URL = import.meta.env.VITE_API_URL;
 
 const Registry = () => {
     const navigate = useNavigate();
@@ -77,7 +77,7 @@ const Registry = () => {
     const generateCaseFilePDF = (person) => {
         const isLocated = locatedPersons.has(person.id);
         const photoUrl = person.photoPath 
-  ? `${BASE_URL}/${person.photoPath}` 
+  ? buildImageUrl(person.photoPath) 
   : null;
         
         const printContent = `
@@ -707,9 +707,13 @@ const Registry = () => {
                                             }}>
                                                 {person.photoPath ? (
                                                     <img 
-                                                        src={`${BASE_URL}${person.photoPath}`}
+                                                        src={buildImageUrl(person.photoPath)}
                                                         alt={person.name} 
                                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                                             onError={(e) => {
+                                                                      e.target.onerror = null;
+                                                                              e.target.src = '/fallback-user.png';
+                                                                        }}
                                                     />
                                                 ) : <User size={24} color="var(--text-secondary)" />}
                                             </div>
@@ -961,9 +965,13 @@ const Registry = () => {
                                 }}>
                                     {selectedPerson.photoPath ? (
                                         <img 
-                                             src={`${BASE_URL}/${selectedPerson.photoPath}`}
+                                             src={buildImageUrl(selectedPerson.photoPath)}
                                             alt={selectedPerson.name}
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                    onError={(e) => {
+                                                    e.target.onerror = null;
+                                                          e.target.src = '/fallback-user.png';
+                                                                    }}
                                         />
                                     ) : (
                                         <div style={{ 

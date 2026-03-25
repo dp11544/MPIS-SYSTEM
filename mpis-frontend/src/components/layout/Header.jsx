@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import StatusIndicator from '../widgets/StatusIndicator';
 import webSocketService from '../../services/WebSocketService';
 import api from '../../api/axios';
+import { buildImageUrl } from '../../utils/url';
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 const Header = () => {
@@ -200,7 +201,7 @@ const Header = () => {
                                                 }}>
                                                     {alert.photoPath ? (
                                                         <img 
-                                                           src={`${BASE_URL}/${alert.photoPath}`}
+                                                           src={buildImageUrl(alert.photoPath)}
                                                             alt=""
                                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                         />

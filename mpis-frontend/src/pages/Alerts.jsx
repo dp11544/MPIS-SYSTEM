@@ -1,3 +1,4 @@
+import { buildImageUrl } from '../utils/url';
 import React, { useState, useEffect } from 'react';
 import { 
     Search, Filter, Eye, Download, ChevronLeft, ChevronRight, Calendar, 
@@ -6,7 +7,8 @@ import {
     Video, BadgeAlert, Activity, ScanFace, User
 } from 'lucide-react';
 import api, { silentApi } from '../api/axios';
-const BASE_URL = import.meta.env.VITE_API_URL;
+import toast from '../utils/toast';
+
 
 const Alerts = () => {
     const [alerts, setAlerts] = useState([]);
@@ -29,20 +31,30 @@ const Alerts = () => {
                 
                 // Fetch person photos for all alerts using silentApi
                 // (silentApi never triggers logout on 401/404 — it fails silently)
-                const photoMap = {};
-                for (const alert of res.data) {
-                    if (alert.personId && !photoMap[alert.personId]) {
-                        try {
-                            const personRes = await silentApi.get(`/persons/${alert.personId}`);
-                            if (personRes.data?.photoPath) {
-                                photoMap[alert.personId] = personRes.data.photoPath;
-                            }
-                        } catch (e) {
-                            // Person not found or auth error — skip photo silently
-                        }
-                    }
-                }
-                setPersonPhotos(photoMap);
+               const uniqueIds = [...new Set(res.data.map(a => a.personId).filter(Boolean))];
+
+    const photoPromises = uniqueIds.map(async (personId) => {
+    try {
+        const personRes = await silentApi.get(`/persons/${personId}`);
+        return {
+            id: personId,
+            photo: personRes.data?.photoPath
+        };
+    } catch {
+        return null;
+    }
+});
+
+    const results = await Promise.all(photoPromises);
+
+    const photoMap = {};
+    results.forEach(item => {
+    if (item && item.photo) {
+        photoMap[item.id] = item.photo;
+    }
+    });
+
+        setPersonPhotos(photoMap);
             } catch (err) {
                 console.error("Failed to fetch alerts", err);
             } finally {
@@ -61,10 +73,10 @@ const Alerts = () => {
     };
 
     // Mark alert as verified
-    const markAsVerified = (alertId) => {
-        setVerifiedAlerts(prev => new Set([...prev, alertId]));
-        alert('✅ Alert marked as VERIFIED! Case has been confirmed.');
-    };
+   const markAsVerified = (alertId) => {
+    setVerifiedAlerts(prev => new Set([...prev, alertId]));
+    toast.success("Alert marked as VERIFIED");
+};
 
     // Generate PDF Report
     const generatePDF = (alertData) => {
@@ -76,9 +88,8 @@ const Alerts = () => {
             }) : 'N/A';
         
         const photoUrl = personPhotos[alertData.personId] 
-    ? `${BASE_URL}${personPhotos[alertData.personId]}` 
+    ? buildImageUrl(personPhotos[alertData.personId]) 
     : null;
-
         const printContent = `
             <!DOCTYPE html>
             <html>
@@ -593,7 +604,23 @@ const Alerts = () => {
                                                         border: '2px solid rgba(255,77,77,0.3)',
                                                         overflow: 'hidden'
                                                     }}>
-                                                        <User size={20} color="var(--text-secondary)" />
+                                                        {personPhotos[alert.personId] ? (
+    <img
+        src={buildImageUrl(personPhotos[alert.personId])}
+        style={{
+            width: '45px',
+            height: '45px',
+            objectFit: 'cover',
+            borderRadius: '10px'
+        }}
+        onError={(e) => {
+    e.target.onerror = null;
+    e.target.src = '/fallback-user.png';
+}}
+    />
+) : (
+    <User size={20} color="var(--text-secondary)" />
+)}
                                                     </div>
                                                     <div>
                                                         <p style={{ fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1rem' }}>
@@ -889,8 +916,7 @@ const Alerts = () => {
                                     }}>
                                         {personPhotos[selectedAlert.personId] ? (
                                             <img 
-                                                src={`${BASE_URL}/${personPhotos[selectedAlert.personId]}`}
-                                                alt="Subject Photo" 
+                                               src={buildImageUrl(personPhotos[selectedAlert.personId])}                                                 alt="Subject Photo" 
                                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                             />
                                         ) : (

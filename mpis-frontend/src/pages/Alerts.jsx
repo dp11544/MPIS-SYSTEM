@@ -889,7 +889,7 @@ const Alerts = () => {
                                     }}>
                                         {personPhotos[selectedAlert.personId] ? (
                                             <img 
-                                                src={`${BASE_URL}${personPhotos[selectedAlert.personId]}`}
+                                                src={`${BASE_URL}/${personPhotos[selectedAlert.personId]}`}
                                                 alt="Subject Photo" 
                                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                             />

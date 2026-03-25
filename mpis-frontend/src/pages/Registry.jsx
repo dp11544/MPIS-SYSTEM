@@ -77,7 +77,7 @@ const Registry = () => {
     const generateCaseFilePDF = (person) => {
         const isLocated = locatedPersons.has(person.id);
         const photoUrl = person.photoPath 
-  ? `${BASE_URL}${person.photoPath}` 
+  ? `${BASE_URL}/${person.photoPath}` 
   : null;
         
         const printContent = `
@@ -961,7 +961,7 @@ const Registry = () => {
                                 }}>
                                     {selectedPerson.photoPath ? (
                                         <img 
-                                             src={`${BASE_URL}${selectedPerson.photoPath}`}
+                                             src={`${BASE_URL}/${selectedPerson.photoPath}`}
                                             alt={selectedPerson.name}
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />

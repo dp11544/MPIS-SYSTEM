@@ -200,7 +200,7 @@ const Header = () => {
                                                 }}>
                                                     {alert.photoPath ? (
                                                         <img 
-                                                           src={`${BASE_URL}${alert.photoPath}`}
+                                                           src={`${BASE_URL}/${alert.photoPath}`}
                                                             alt=""
                                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                         />

@@ -4,7 +4,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/mpis_db}
+      uri: ${SPRING_DATA_MONGODB_URI}
 
   servlet:
     multipart:
@@ -12,29 +12,31 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+  web:
+    resources:
+      static-locations: file:uploads/
+  mvc:
+    static-path-pattern: /uploads/**
+
 server:
   port: 8080
 
-# 🔥 OTP CONFIG
 otp:
   demo-mode: true
   expiration-seconds: 130
 
-# 🔥 MPIS CONFIG (IMPORTANT)
 mpis:
   ai:
     similarity-threshold: 0.65
-    # 🔥 PRODUCTION URL (Railway)
-    engine-url: ${MPIS_AI_ENGINE_URL:https://mpis-ai-engine-production-a3a3.up.railway.app}
+    engine-url: ${MPIS_AI_ENGINE_URL}
 
   cache:
     dedup-window-seconds: 5
 
   jwt:
-    secret: ${MPIS_JWT_SECRET:abcefg1234567890mnopqrstuvwxyzABCEFG1234567890MNOPQRS}
+    secret: ${MPIS_JWT_SECRET}
     expiration-ms: 86400000
 
-# 🔥 ACTUATOR
 management:
   endpoints:
     web:

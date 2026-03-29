@@ -3,21 +3,17 @@ const BASE_URL = import.meta.env.VITE_API_URL;
 export const buildImageUrl = (path) => {
     if (!path || typeof path !== "string") return null;
 
-    // If already full valid URL
-    if (path.startsWith("http")) return path;
-
-    // If backend accidentally sent domain without protocol
-    if (path.includes("onrender.com")) {
-        const cleaned = path.replace(/^https?:\/\//, "");
-        return `https://${cleaned.replace(/\/+/, "/")}`;
+    // If already full URL → just encode and return
+    if (path.startsWith("http")) {
+        return encodeURI(path);
     }
 
+    // Clean base URL (remove trailing slash)
     const cleanBase = BASE_URL.replace(/\/+$/, "");
 
-    // Remove accidental domain fragments
-    const cleanPath = path
-        .replace(/^https?:\/\/[^/]+/, "") // remove domain if exists
-        .replace(/^\/+/, ""); // remove leading slashes
+    // Ensure path starts with single slash
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
 
-    return `${cleanBase}/${cleanPath}`;
+    // 🔥 FINAL FIX: encode spaces & special chars
+    return encodeURI(`${cleanBase}${cleanPath}`);
 };

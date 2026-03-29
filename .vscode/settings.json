@@ -28,5 +28,6 @@
     "python.linting.enabled": false,
     "python.linting.pylintEnabled": false,
     "python.linting.flake8Enabled": false,
-    "python.linting.mypyEnabled": false
+    "python.linting.mypyEnabled": false,
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

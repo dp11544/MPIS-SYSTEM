@@ -1,8 +1,9 @@
 import logging
 import sys
+import os
 
 from flask import Flask
-from flask_cors import CORS  # 🔥 ADD THIS
+from flask_cors import CORS
 
 from config import LOG_FORMAT, LOG_DATE_FORMAT, LOG_LEVEL
 from embedding_engine import get_engine
@@ -21,15 +22,26 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# 🔥 DEPLOYMENT FINGERPRINT
 print("🔥 MPIS AI ENGINE STABLE MODE 🔥")
 
 
 # ---------------- Flask App ----------------
 app = Flask(__name__)
 
-# 🔥 CRITICAL FIX: ENABLE CORS
-CORS(app, resources={r"/*": {"origins": "*"}})
+# ✅ FORCE GLOBAL CORS (STRICT FIX)
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    supports_credentials=True
+)
+
+# ✅ EXTRA SAFETY (IMPORTANT)
+@app.after_request
+def apply_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
+    return response
 
 
 # ---------------- Lazy Global State ----------------
@@ -37,8 +49,6 @@ _engine = None
 _db_loader = None
 _matcher = None
 
-
-# ---------------- Lazy Load Functions ----------------
 
 def get_engine_safe():
     global _engine
@@ -75,11 +85,11 @@ api_server.register_routes(
     get_engine_safe,
     get_db_loader_safe,
     get_matcher_safe,
-    None  # camera disabled in cloud
+    None
 )
 
 
-# ---------------- LOCAL RUN (OPTIONAL) ----------------
+# ---------------- LOCAL RUN ----------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

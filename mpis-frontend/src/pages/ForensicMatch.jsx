@@ -6,7 +6,7 @@ import api from '../api/axios';
 import axios from 'axios';
 
 // AI Engine URL - adjust if different
-const AI_ENGINE_URL = import.meta.env.VITE_AI_ENGINE_URL;
+const AI_ENGINE_URL = (import.meta.env.VITE_AI_ENGINE_URL || "").replace(/\/+$/, "");
 
 console.log("AI URL:", AI_ENGINE_URL);
 
@@ -112,24 +112,22 @@ const ForensicMatch = () => {
             const formData = new FormData();
             formData.append('image', selectedFile);
 
-           if (!AI_ENGINE_URL) {
-    throw new Error("AI Engine URL missing");
-}
-
+           
+console.log("Calling AI:", `${AI_ENGINE_URL}/extract-embedding`);
                         const embeddingResponse = await axios.post(
                             `${AI_ENGINE_URL}/extract-embedding`,
                 formData,
                 {
                     headers: { 'Content-Type': 'multipart/form-data' },
-                    timeout: 30000 // 30 second timeout
+                    timeout: 60000 // 60 second timeout
                 }
             );
 
             const embedding = embeddingResponse?.data?.embedding;
 
-if (!embedding || !Array.isArray(embedding)) {
-    throw new Error('Invalid embedding response');
-}
+        if (!embedding || !Array.isArray(embedding) || embedding.length === 0) {
+        throw new Error("Invalid embedding from AI");
+    }       
 
             // Stage 2: Send embedding to backend for matching
             setProcessingStage('matching');
@@ -155,7 +153,7 @@ if (!embedding || !Array.isArray(embedding)) {
             console.error('Forensic analysis error:', err);
             
             if (!err.response) {
-    setError('Network error. AI Engine or Backend not reachable.');
+    setError('AI Engine not reachable. Check Railway deployment or URL.');
 } else if (err.response.status === 404) {
     setError('API endpoint not found.');
 } else if (err.response.status === 500) {

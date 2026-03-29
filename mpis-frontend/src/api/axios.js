@@ -2,9 +2,9 @@ import axios from 'axios';
 import toast from '../utils/toast';
 
 /**
- * ✅ ENV VALIDATION (CRITICAL)
+ * ✅ SAFE BASE URL (prevents double /api issue)
  */
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
 if (!BASE_URL) {
     throw new Error("VITE_API_URL is not defined. Check your env variables.");
@@ -22,7 +22,7 @@ const api = axios.create({
 });
 
 export const silentApi = axios.create({
-    baseURL: `${BASE_URL}/api`, // ✅ FIXED (comma added)
+    baseURL: `${BASE_URL}/api`,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -101,7 +101,7 @@ api.interceptors.response.use(
 
     async (error) => {
         if (!error.response) {
-            toast.error("Network error / server sleeping");
+            toast.error("Server not reachable or sleeping (Render cold start)");
             return Promise.reject(error);
         }
 
@@ -145,5 +145,16 @@ silentApi.interceptors.response.use(
     (response) => response,
     (error) => Promise.reject(error)
 );
+
+/**
+ * ✅ IMAGE URL BUILDER (CRITICAL FIX)
+ */
+export const buildImageUrl = (path) => {
+    if (!path) return null;
+
+    if (path.startsWith("http")) return path;
+
+    return `${BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+};
 
 export default api;

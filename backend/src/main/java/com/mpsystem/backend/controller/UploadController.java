@@ -22,8 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class UploadController {
 
-    // ✅ MUST match AppConfig EXACTLY
-    private static final String UPLOAD_DIR = "/tmp/uploads/";
+    // ✅ FIXED: persistent folder (NOT /tmp)
+    private static final String UPLOAD_DIR = "uploads/";
 
     private final PersonService personService;
     private final AIClientService aiClientService;
@@ -40,57 +40,54 @@ public class UploadController {
             @RequestParam("image") MultipartFile image) {
 
         try {
-            // 🔴 Validate input
+            // ✅ Validate
             if (image == null || image.isEmpty()) {
                 return ResponseEntity
                         .status(HttpStatus.BAD_REQUEST)
                         .body("Image file is empty");
             }
 
-            // 🔴 Read bytes ONCE
             byte[] imageBytes = image.getBytes();
 
-            // 🔴 Safe filename
+            // ✅ Safe filename
             String originalFilename = image.getOriginalFilename();
             if (originalFilename == null) {
                 originalFilename = "image.jpg";
             }
 
-            // remove spaces + unsafe chars
             String safeFilename = originalFilename
                     .replaceAll("\\s+", "_")
                     .replaceAll("[^a-zA-Z0-9._-]", "");
 
             String filename = System.currentTimeMillis() + "_" + safeFilename;
 
-            // 🔴 Ensure directory exists
+            // ✅ Ensure uploads folder exists
             File dir = new File(UPLOAD_DIR);
             if (!dir.exists()) {
                 boolean created = dir.mkdirs();
                 log.info("Upload directory created: {}", created);
             }
 
-            // 🔴 Save file
+            // ✅ Save file
             File destination = new File(UPLOAD_DIR + filename);
             Files.write(destination.toPath(), imageBytes);
 
             log.info("Saved at: {}", destination.getAbsolutePath());
-            log.info("File exists: {}", destination.exists());
 
-            // 🔴 HARD CHECK (prevents broken DB entries)
             if (!destination.exists()) {
                 throw new RuntimeException("File not saved properly");
             }
 
-            // 🔴 Fetch person
+            // ✅ Fetch person
             Person person = personService.getPersonById(personId);
 
-            // 🔴 AI embedding
+            // ✅ AI embedding
             List<Double> embedding = aiClientService.getEmbedding(imageBytes, safeFilename);
 
-            // 🔴 Save path (USED BY FRONTEND)
-            person.setPhotoPath("uploads/" + filename);
+            // ✅ FIXED: correct URL path
+            person.setPhotoPath("/uploads/" + filename);
 
+            // ✅ Safe embedding handling
             if (person.getFaceEmbeddings() == null) {
                 person.setFaceEmbeddings(new java.util.ArrayList<>());
             }

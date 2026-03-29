@@ -17,8 +17,13 @@ public class PersonService {
         this.personRepository = personRepository;
     }
 
-    // ✅ SAVE PERSON
+    // ✅ SAVE PERSON (SAFE)
     public Person savePerson(Person person) {
+
+        if (person == null) {
+            throw new RuntimeException("Person cannot be null");
+        }
+
         return personRepository.save(person);
     }
 
@@ -29,15 +34,23 @@ public class PersonService {
 
     // ✅ GET PERSON BY ID
     public Person getPersonById(String id) {
+
+        if (id == null || id.isBlank()) {
+            throw new RuntimeException("Invalid person ID");
+        }
+
         return personRepository.findById(id)
                 .orElseThrow(() -> new PersonNotFoundException(id));
     }
 
-    // 🔥 UPDATE PHOTO PATH (USED BY UPLOAD CONTROLLER)
+    // ✅ UPDATE PHOTO PATH (SAFE + CONTROLLED)
     public Person updatePhoto(String personId, String photoPath) {
 
-        Person person = personRepository.findById(personId)
-                .orElseThrow(() -> new PersonNotFoundException(personId));
+        Person person = getPersonById(personId);
+
+        if (photoPath == null || photoPath.isBlank()) {
+            throw new RuntimeException("Invalid photo path");
+        }
 
         person.setPhotoPath(photoPath);
 
@@ -46,9 +59,15 @@ public class PersonService {
 
     // 🗑️ DELETE PERSON
     public void deletePerson(String id) {
+
+        if (id == null || id.isBlank()) {
+            throw new RuntimeException("Invalid person ID");
+        }
+
         if (!personRepository.existsById(id)) {
             throw new PersonNotFoundException(id);
         }
+
         personRepository.deleteById(id);
     }
 }

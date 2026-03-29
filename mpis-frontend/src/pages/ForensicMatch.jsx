@@ -6,7 +6,7 @@ import api from '../api/axios';
 import axios from 'axios';
 
 // AI Engine URL - adjust if different
-const AI_ENGINE_URL = 'http://localhost:5000';
+const AI_ENGINE_URL = import.meta.env.VITE_AI_ENGINE_URL;
 
 const ForensicMatch = () => {
     const navigate = useNavigate();
@@ -115,11 +115,11 @@ const ForensicMatch = () => {
                 }
             );
 
-            const { embedding } = embeddingResponse.data;
+            const embedding = embeddingResponse?.data?.embedding;
 
-            if (!embedding || !Array.isArray(embedding)) {
-                throw new Error('Invalid embedding response from AI Engine');
-            }
+if (!embedding || !Array.isArray(embedding)) {
+    throw new Error('Invalid embedding response');
+}
 
             // Stage 2: Send embedding to backend for matching
             setProcessingStage('matching');
@@ -136,7 +136,7 @@ const ForensicMatch = () => {
                 personName: matchData.matchedPerson || 'Unknown',
                 personId: matchData.caseId || 'N/A',
                 similarity: matchData.similarity || 0,
-                confidenceLevel: getConfidenceLevel(matchData.similarity),
+                confidenceLevel: matchData.confidenceLevel,
                 status: matchData.status
             });
             // ...existing code...
@@ -144,15 +144,15 @@ const ForensicMatch = () => {
         } catch (err) {
             console.error('Forensic analysis error:', err);
             
-            if (err.code === 'ECONNREFUSED' || err.message?.includes('Network Error')) {
-                setError('AI Engine is offline. Please ensure the Python AI service is running on port 5001.');
-            } else if (err.response?.status === 404) {
-                setError('Endpoint not found. Please verify API configuration.');
-            } else if (err.response?.status === 500) {
-                setError('Server error during analysis. Check AI Engine and Backend logs.');
-            } else {
-                setError(err.response?.data?.message || err.message || 'Failed to run forensic analysis. Please try again.');
-            }
+            if (!err.response) {
+    setError('Network error. AI Engine or Backend not reachable.');
+} else if (err.response.status === 404) {
+    setError('API endpoint not found.');
+} else if (err.response.status === 500) {
+    setError('Server error during analysis.');
+} else {
+    setError(err.response?.data?.message || 'Analysis failed.');
+}
         } finally {
             setIsAnalyzing(false);
             setProcessingStage('');
@@ -304,7 +304,7 @@ const ForensicMatch = () => {
                                 </button>
                                 <button
                                     onClick={handleAnalyzeClick}
-                                    disabled={isAnalyzing || result}
+                                    disabled={isAnalyzing}
                                     style={{ flex: 2, padding: '12px', background: result ? 'var(--status-success)' : 'rgba(0,123,255,0.2)', color: result ? '#000' : 'var(--brand-blue)', border: result ? 'none' : '1px solid var(--brand-blue)', borderRadius: '8px', cursor: (isAnalyzing || result) ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: result ? '0 0 15px rgba(40,167,69,0.5)' : 'none' }}
                                 >
                                     {isAnalyzing ? <><ScanFace className="spin" size={18} /> {getProcessingMessage()}</> : (result ? <><CheckCircle size={18} /> ANALYSIS COMPLETE</> : <><Fingerprint size={18} /> RUN FORENSIC MATCH</>)}

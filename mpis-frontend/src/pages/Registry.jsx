@@ -705,19 +705,17 @@ const Registry = () => {
                                                 overflow: 'hidden',
                                                 boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
                                             }}>
-                                                {console.log("PATH:", person.photoPath)}
-                                                       {console.log("URL:", buildImageUrl(person.photoPath))}
-                                                {person.photoPath && person.photoPath.trim() !== "" ? (
-                                                    <img 
-                                                        src={buildImageUrl(person.photoPath)}
-                                                        alt={person.name} 
-                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                                             onError={(e) => {
-                                                                      e.target.onerror = null;
-                                                                              e.target.src = '/fallback-user.png';
-                                                                        }}
-                                                    />
-                                                ) : <User size={24} color="var(--text-secondary)" />}
+   <img 
+    src={buildImageUrl(person.photoPath) || '/fallback-user.png'}
+    alt={person.name}
+    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+    onError={(e) => {
+        e.target.onerror = null;
+        e.target.src = '/fallback-user.png';
+    }}
+/>
+                                            
+                                               
                                             </div>
                                             <div>
                                                 <p style={{ 

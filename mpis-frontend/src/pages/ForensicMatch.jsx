@@ -8,6 +8,12 @@ import axios from 'axios';
 // AI Engine URL - adjust if different
 const AI_ENGINE_URL = import.meta.env.VITE_AI_ENGINE_URL;
 
+console.log("AI URL:", AI_ENGINE_URL);
+
+if (!AI_ENGINE_URL) {
+    throw new Error("VITE_AI_ENGINE_URL not set");
+}
+
 const ForensicMatch = () => {
     const navigate = useNavigate();
     const [selectedFile, setSelectedFile] = useState(null);
@@ -106,8 +112,12 @@ const ForensicMatch = () => {
             const formData = new FormData();
             formData.append('image', selectedFile);
 
-            const embeddingResponse = await axios.post(
-                `${AI_ENGINE_URL}/extract-embedding`,
+           if (!AI_ENGINE_URL) {
+    throw new Error("AI Engine URL missing");
+}
+
+                        const embeddingResponse = await axios.post(
+                            `${AI_ENGINE_URL}/extract-embedding`,
                 formData,
                 {
                     headers: { 'Content-Type': 'multipart/form-data' },

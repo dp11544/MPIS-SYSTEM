@@ -11,24 +11,29 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class AppConfig implements WebMvcConfigurer {
 
+    // 🔥 REST TEMPLATE (keep as is)
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();
     }
 
+    // 🔥 FIXED: Use SAME path as UploadController (/tmp/uploads)
+    private static final String UPLOAD_DIR = "/tmp/uploads/";
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
 
-        // ✅ SAME path as UploadController
-        String uploadDir = System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
+        File dir = new File(UPLOAD_DIR);
 
-        File dir = new File(uploadDir);
+        // 🔥 Ensure directory exists
         if (!dir.exists()) {
-            dir.mkdirs(); // ensure folder exists
+            boolean created = dir.mkdirs();
+            System.out.println("Upload dir created: " + created);
         }
 
+        // 🔥 CRITICAL: Map /uploads/** → /tmp/uploads/
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadDir)
-                .setCachePeriod(0);
+                .addResourceLocations("file:" + UPLOAD_DIR)
+                .setCachePeriod(3600);
     }
 }

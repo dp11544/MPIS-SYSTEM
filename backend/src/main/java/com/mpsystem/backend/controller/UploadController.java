@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.mpsystem.backend.model.Person;
 import com.mpsystem.backend.service.AIClientService;
 import com.mpsystem.backend.service.PersonService;
+
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
@@ -21,8 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class UploadController {
 
-    // 🔥 FIXED: Use /tmp for Render (cloud-safe)
-    private static final String UPLOAD_DIR = "/tmp/uploads";
+    // ✅ MUST match AppConfig EXACTLY
+    private static final String UPLOAD_DIR = "/tmp/uploads/";
 
     private final PersonService personService;
     private final AIClientService aiClientService;
@@ -39,47 +40,55 @@ public class UploadController {
             @RequestParam("image") MultipartFile image) {
 
         try {
-            // ❌ Invalid file check
+            // 🔴 Validate input
             if (image == null || image.isEmpty()) {
                 return ResponseEntity
                         .status(HttpStatus.BAD_REQUEST)
                         .body("Image file is empty");
             }
 
-            // 🔥 Read bytes ONCE
+            // 🔴 Read bytes ONCE
             byte[] imageBytes = image.getBytes();
-            String originalFilename = image.getOriginalFilename();
 
+            // 🔴 Safe filename
+            String originalFilename = image.getOriginalFilename();
             if (originalFilename == null) {
                 originalFilename = "image.jpg";
             }
 
-            // 🔥 FIX: remove spaces from filename
-            String safeFilename = originalFilename.replaceAll("\\s+", "_");
+            // remove spaces + unsafe chars
+            String safeFilename = originalFilename
+                    .replaceAll("\\s+", "_")
+                    .replaceAll("[^a-zA-Z0-9._-]", "");
 
-            // 🔥 FINAL filename
             String filename = System.currentTimeMillis() + "_" + safeFilename;
 
-            // 1️⃣ Fetch person
-            Person person = personService.getPersonById(personId);
-
-            // 2️⃣ Call AI engine
-            List<Double> embedding = aiClientService.getEmbedding(imageBytes, originalFilename);
-
-            // 3️⃣ Ensure upload directory exists
-            File uploadDir = new File(UPLOAD_DIR);
-            if (!uploadDir.exists()) {
-                boolean created = uploadDir.mkdirs();
+            // 🔴 Ensure directory exists
+            File dir = new File(UPLOAD_DIR);
+            if (!dir.exists()) {
+                boolean created = dir.mkdirs();
                 log.info("Upload directory created: {}", created);
             }
 
-            // 4️⃣ Save file to /tmp/uploads
-            File destination = new File(uploadDir, filename);
+            // 🔴 Save file
+            File destination = new File(UPLOAD_DIR + filename);
             Files.write(destination.toPath(), imageBytes);
 
-            log.info("File saved at: {}", destination.getAbsolutePath());
+            log.info("Saved at: {}", destination.getAbsolutePath());
+            log.info("File exists: {}", destination.exists());
 
-            // 5️⃣ Save DB path (DO NOT CHANGE THIS FORMAT)
+            // 🔴 HARD CHECK (prevents broken DB entries)
+            if (!destination.exists()) {
+                throw new RuntimeException("File not saved properly");
+            }
+
+            // 🔴 Fetch person
+            Person person = personService.getPersonById(personId);
+
+            // 🔴 AI embedding
+            List<Double> embedding = aiClientService.getEmbedding(imageBytes, safeFilename);
+
+            // 🔴 Save path (USED BY FRONTEND)
             person.setPhotoPath("uploads/" + filename);
 
             if (person.getFaceEmbeddings() == null) {
@@ -90,7 +99,7 @@ public class UploadController {
 
             personService.savePerson(person);
 
-            return ResponseEntity.ok("Photo uploaded and face embedding stored successfully");
+            return ResponseEntity.ok("Photo uploaded and embedding stored");
 
         } catch (com.mpsystem.backend.exception.FaceDetectionException e) {
 

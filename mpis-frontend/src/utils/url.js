@@ -1,23 +1,23 @@
 const BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
 export const buildImageUrl = (path) => {
-    // ✅ Handle empty / invalid path
+    // ❌ Invalid path
     if (!path || typeof path !== "string") {
         return "/fallback-user.png";
     }
 
-    // ✅ ENV safety
+    // 🔥 FIRST: handle Cloudinary / external URLs
+    if (path.startsWith("http")) {
+        return path;
+    }
+
+    // 🔴 THEN check backend base URL
     if (!BASE_URL) {
         console.error("❌ VITE_API_URL is not set");
         return "/fallback-user.png";
     }
 
-    // ✅ Already full URL (future-proof: Cloudinary, etc.)
-    if (path.startsWith("http")) {
-        return path;
-    }
-
-    // ✅ Normalize path (no double slash)
+    // ✅ Normalize path
     const cleanPath = path.replace(/^\//, "");
 
     return `${BASE_URL}/${cleanPath}`;

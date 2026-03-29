@@ -16,35 +16,38 @@ import java.time.Instant;
 public class DatabaseSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
-
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder encoder; // 🔥 inject bean
 
     @Override
     public void run(String... args) {
 
         try {
 
-            if (userRepository.findByBatchId("admin").isPresent()) {
+            // 🔥 CASE-INSENSITIVE CHECK
+            if (userRepository.findByBatchIdIgnoreCase("admin").isPresent()) {
                 log.info("✅ Admin already exists. Skipping seeding.");
                 return;
             }
 
             log.info("🔐 Creating default admin user...");
 
+            // 🔥 STRONG DEFAULT PASSWORD (NOT 'admin')
+            String rawPassword = "Admin@123"; 
+
             User admin = User.builder()
                     .batchId("admin")
-                    .passwordHash(encoder.encode("admin"))
+                    .passwordHash(encoder.encode(rawPassword))
                     .mobile("5551239842")
                     .role("ADMIN")
                     .status("ACTIVE")
                     .failedAttempts(0)
-                    .createdAt(Instant.now())   // 🔥 FIX
-                    .lockUntil(null)            // 🔥 IMPORTANT
+                    .createdAt(Instant.now())
+                    .lockUntil(null)
                     .build();
 
             userRepository.save(admin);
 
-            log.info("✅ Admin created → ID: admin | Password: admin");
+            log.warn("⚠️ Default Admin Created → ID: admin | Password: {}", rawPassword);
 
         } catch (Exception e) {
             log.error("❌ Failed to seed admin user", e);

@@ -2,7 +2,7 @@ const listeners = new Set();
 const MAX_TOASTS = 5;
 
 // Track active toast IDs
-let activeToasts = [];
+let activeToasts = new Map(); // 🔥 better than array
 
 const emit = (event, data) => {
     try {
@@ -15,30 +15,33 @@ const emit = (event, data) => {
 };
 
 const generateId = () => {
-    // Safe ID generation
     if (typeof crypto !== "undefined" && crypto.randomUUID) {
         return crypto.randomUUID();
     }
-    return Date.now() + Math.random();
+    return `${Date.now()}-${Math.random()}`;
 };
 
 const createToast = (type, message) => {
     const id = generateId();
 
-    // 🔥 LIMIT TOASTS (IMPORTANT)
-    if (activeToasts.length >= MAX_TOASTS) {
-        const oldest = activeToasts.shift();
-        emit("remove", { id: oldest });
+    // 🔥 LIMIT TOASTS
+    if (activeToasts.size >= MAX_TOASTS) {
+        const oldestId = activeToasts.keys().next().value;
+        clearTimeout(activeToasts.get(oldestId)); // 🔥 prevent double remove
+        activeToasts.delete(oldestId);
+        emit("remove", { id: oldestId });
     }
-
-    activeToasts.push(id);
 
     emit("add", { id, message, type });
 
-    setTimeout(() => {
-        activeToasts = activeToasts.filter((t) => t !== id);
+    const timeoutId = setTimeout(() => {
+        if (!activeToasts.has(id)) return; // 🔥 prevent double remove
+
+        activeToasts.delete(id);
         emit("remove", { id });
     }, 4000);
+
+    activeToasts.set(id, timeoutId);
 };
 
 export const toast = {
@@ -61,7 +64,13 @@ export const toast = {
     info: (message) => createToast("info", message),
 
     remove: (id) => {
-        activeToasts = activeToasts.filter((t) => t !== id);
+        const timeoutId = activeToasts.get(id);
+
+        if (timeoutId) {
+            clearTimeout(timeoutId); // 🔥 stop auto remove
+            activeToasts.delete(id);
+        }
+
         emit("remove", { id });
     },
 };

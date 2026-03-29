@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Instant;
-import java.util.Random;
+import java.security.SecureRandom;
 
 import com.mpsystem.backend.util.JwtUtil;
 
@@ -28,8 +28,9 @@ public class AuthService {
     private final LoginAttemptRepository loginAttemptRepository;
     private final OtpSessionRepository otpSessionRepository;
     private final JwtUtil jwtUtil;
+    private final BCryptPasswordEncoder encoder; // 🔥 FIX
 
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    private static final SecureRandom secureRandom = new SecureRandom(); // 🔥 FIX
 
     public String login(String batchId, String password) {
 
@@ -40,7 +41,9 @@ public class AuthService {
                 return "INVALID";
             }
 
-            User user = userRepository.findByBatchId(batchId).orElse(null);
+            batchId = batchId.trim();
+
+            User user = userRepository.findByBatchIdIgnoreCase(batchId).orElse(null); // 🔥 FIX
 
             if (user == null) {
                 log.warn("User not found: {}", batchId);
@@ -48,13 +51,6 @@ public class AuthService {
                 return "INVALID";
             }
 
-            String hash = user.getPasswordHash();
-            if (hash == null || hash.isEmpty()) {
-                log.error("Password hash missing for {}", batchId);
-                return "INVALID";
-            }
-
-            // 🔥 FIX: Instant instead of LocalDateTime
             if (user.getLockUntil() != null &&
                 user.getLockUntil().isAfter(Instant.now())) {
 
@@ -63,8 +59,9 @@ public class AuthService {
             }
 
             boolean passwordMatch;
+
             try {
-                passwordMatch = encoder.matches(password, hash);
+                passwordMatch = encoder.matches(password, user.getPasswordHash());
             } catch (Exception e) {
                 log.error("Password match error", e);
                 return "INVALID";
@@ -75,7 +72,6 @@ public class AuthService {
                 user.setFailedAttempts(user.getFailedAttempts() + 1);
 
                 if (user.getFailedAttempts() >= 3) {
-                    // 🔥 FIX
                     user.setLockUntil(Instant.now().plusSeconds(86400));
                     user.setStatus("LOCKED");
                 }
@@ -95,14 +91,13 @@ public class AuthService {
 
             String otp = generateOtp();
 
-            // 🔥 safer delete
             otpSessionRepository.deleteByBatchId(batchId);
 
             otpSessionRepository.save(
                 OtpSession.builder()
                     .batchId(batchId)
                     .otpHash(encoder.encode(otp))
-                    .expiresAt(Instant.now().plusSeconds(otpExpirationSeconds)) // 🔥 FIX
+                    .expiresAt(Instant.now().plusSeconds(otpExpirationSeconds))
                     .verified(false)
                     .attempts(0)
                     .build()
@@ -136,7 +131,6 @@ public class AuthService {
 
             if (session == null) return "INVALID_OTP";
 
-            // 🔥 FIX
             if (session.getExpiresAt().isBefore(Instant.now()))
                 return "OTP_EXPIRED";
 
@@ -167,7 +161,7 @@ public class AuthService {
         loginAttemptRepository.save(
             LoginAttempt.builder()
                 .batchId(batchId)
-                .timestamp(Instant.now()) // 🔥 FIX
+                .timestamp(Instant.now())
                 .success(success)
                 .reason(reason)
                 .build()
@@ -175,6 +169,6 @@ public class AuthService {
     }
 
     private String generateOtp() {
-        return String.valueOf(100000 + new Random().nextInt(900000));
+        return String.valueOf(100000 + secureRandom.nextInt(900000)); // 🔥 FIX
     }
 }

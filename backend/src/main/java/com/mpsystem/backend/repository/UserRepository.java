@@ -6,5 +6,8 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.Optional;
 
 public interface UserRepository extends MongoRepository<User, String> {
-    Optional<User> findByBatchId(String batchId);
+
+    // ✅ Case-insensitive lookup (better UX)
+    Optional<User> findByBatchIdIgnoreCase(String batchId);
+
 }

@@ -3,16 +3,6 @@ import { useNavigate } from 'react-router-dom';
 const sirenSound = 'https://actions.google.com/sounds/v1/alarms/spaceship_alarm.ogg';
 import { Upload, ScanFace, CheckCircle, XCircle, AlertTriangle, Fingerprint, User, Hash, Percent, FileText } from 'lucide-react';
 import api from '../api/axios';
-import axios from 'axios';
-
-// AI Engine URL - adjust if different
-const AI_ENGINE_URL = (import.meta.env.VITE_AI_ENGINE_URL || "").replace(/\/+$/, "");
-
-console.log("AI URL:", AI_ENGINE_URL);
-
-if (!AI_ENGINE_URL) {
-    throw new Error("VITE_AI_ENGINE_URL not set");
-}
 
 const ForensicMatch = () => {
     const navigate = useNavigate();
@@ -106,54 +96,43 @@ const ForensicMatch = () => {
         setResult(null);
 
         try {
-            // Stage 1: Extract embedding from AI Engine
-            setProcessingStage('extracting');
-            
-            const formData = new FormData();
-            formData.append('image', selectedFile);
+    // Stage 1: extracting
+    setProcessingStage('extracting');
 
-           
-console.log("Calling AI:", `${AI_ENGINE_URL}/extract-embedding`);
-                        const embeddingResponse = await axios.post(
-                            `${AI_ENGINE_URL}/extract-embedding`,
-                formData,
-                {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                    timeout: 60000 // 60 second timeout
-                }
-            );
+    const formData = new FormData();
+    formData.append('image', selectedFile);
 
-            const embedding = embeddingResponse?.data?.embedding;
+    // small delay so user sees extracting stage
+    await new Promise(resolve => setTimeout(resolve, 400));
 
-        if (!embedding || !Array.isArray(embedding) || embedding.length === 0) {
-        throw new Error("Invalid embedding from AI");
-    }       
+    // Stage 2: matching
+    setProcessingStage('matching');
 
-            // Stage 2: Send embedding to backend for matching
-            setProcessingStage('matching');
+    const matchResponse = await api.post(
+        '/forensic/match-image',
+        formData,
+        {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }
+    );
 
-            const matchResponse = await api.post('/forensic/match', {
-                embedding: embedding
-            });
+    const matchData = matchResponse.data;
 
-            const matchData = matchResponse.data;
-
-            // Transform response to UI format
-            setResult({
-                match: matchData.status === 'MATCH_FOUND',
-                personName: matchData.matchedPerson || 'Unknown',
-                personId: matchData.caseId || 'N/A',
-                similarity: matchData.similarity || 0,
-                confidenceLevel: matchData.confidenceLevel,
-                status: matchData.status
-            });
-            // ...existing code...
+    // Transform response to UI format
+    setResult({
+        match: matchData.status === 'MATCH_FOUND',
+        personName: matchData.matchedPerson || 'Unknown',
+        personId: matchData.caseId || null, // ✅ FIXED
+        similarity: matchData.similarity || 0,
+        confidenceLevel: matchData.confidenceLevel,
+        status: matchData.status
+    });
 
         } catch (err) {
             console.error('Forensic analysis error:', err);
             
-            if (!err.response) {
-    setError('AI Engine not reachable. Check Railway deployment or URL.');
+ if (!err.response) {
+    setError(' Backend not reachable. Check server deployment. ');
 } else if (err.response.status === 404) {
     setError('API endpoint not found.');
 } else if (err.response.status === 500) {
@@ -213,17 +192,16 @@ console.log("Calling AI:", `${AI_ENGINE_URL}/extract-embedding`);
         }
     };
 
-    const getProcessingMessage = () => {
-        switch (processingStage) {
-            case 'extracting':
-                return 'EXTRACTING BIOMETRIC FEATURES...';
-            case 'matching':
-                return 'RUNNING DEEP NEURAL MATCH...';
-            default:
-                return 'PROCESSING...';
-        }
-    };
-
+            const getProcessingMessage = () => {
+    switch (processingStage) {
+        case 'extracting':
+            return 'EXTRACTING BIOMETRIC FEATURES...';
+        case 'matching':
+            return 'RUNNING DEEP NEURAL MATCH...';
+        default:
+            return 'PROCESSING...';
+    }
+};
     return (
         <div style={{ animation: 'slideDown 0.4s easeOut', height: '100%', display: 'flex', flexDirection: 'column' }}>
             {showSirenAlert && (

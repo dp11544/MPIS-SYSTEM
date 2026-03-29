@@ -8,17 +8,28 @@ import com.mpsystem.backend.model.ConfidenceLevel;
 import com.mpsystem.backend.model.Person;
 import com.mpsystem.backend.repository.PersonRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class FaceMatchService {
 
     private final PersonRepository personRepository;
+
+    private static final int EMBEDDING_SIZE = 512;
 
     public FaceMatchService(PersonRepository personRepository) {
         this.personRepository = personRepository;
     }
 
-    // 🔹 Find best matching person
+    // 🔥 Find best match (optimized)
     public MatchResult findBestMatch(List<Double> inputEmbedding) {
+
+        // 🔴 VALIDATION
+        if (inputEmbedding == null || inputEmbedding.size() != EMBEDDING_SIZE) {
+            log.error("Invalid input embedding");
+            return new MatchResult(null, 0.0);
+        }
 
         List<Person> persons = personRepository.findAll();
 
@@ -26,60 +37,67 @@ public class FaceMatchService {
         double highestSimilarity = 0.0;
 
         for (Person person : persons) {
-            if (person.getFaceEmbeddings() == null || person.getFaceEmbeddings().isEmpty()) continue;
 
-            double maxSimForPerson = 0.0;
+            if (person.getFaceEmbeddings() == null || person.getFaceEmbeddings().isEmpty()) {
+                continue;
+            }
+
             for (List<Double> emb : person.getFaceEmbeddings()) {
-                if (emb == null || emb.isEmpty()) continue;
+
+                if (emb == null || emb.size() != EMBEDDING_SIZE) continue;
+
                 double similarity = cosineSimilarity(inputEmbedding, emb);
-                if (similarity > maxSimForPerson) {
-                    maxSimForPerson = similarity;
+
+                // 🔥 EARLY EXIT (BIG OPTIMIZATION)
+                if (similarity >= 0.98) {
+                    log.info("Perfect match found early → {}", person.getName());
+                    return new MatchResult(person, similarity);
+                }
+
+                if (similarity > highestSimilarity) {
+                    highestSimilarity = similarity;
+                    bestMatch = person;
                 }
             }
-
-            if (maxSimForPerson > highestSimilarity) {
-                highestSimilarity = maxSimForPerson;
-                bestMatch = person;
-            }
         }
+
+        log.info("Best match similarity: {}", highestSimilarity);
 
         return new MatchResult(bestMatch, highestSimilarity);
     }
 
-    // 🔹 Cosine Similarity Function
+    // 🔹 Cosine Similarity
     private double cosineSimilarity(List<Double> v1, List<Double> v2) {
-        if (v1 == null || v2 == null || v1.size() != v2.size() || v1.isEmpty()) {
-            return 0.0;
-        }
 
         double dotProduct = 0.0;
         double normA = 0.0;
         double normB = 0.0;
 
-        for (int i = 0; i < v1.size(); i++) {
-            dotProduct += v1.get(i) * v2.get(i);
-            normA += Math.pow(v1.get(i), 2);
-            normB += Math.pow(v2.get(i), 2);
+        for (int i = 0; i < EMBEDDING_SIZE; i++) {
+            double a = v1.get(i);
+            double b = v2.get(i);
+
+            dotProduct += a * b;
+            normA += a * a;
+            normB += b * b;
         }
 
         double denominator = Math.sqrt(normA) * Math.sqrt(normB);
+
         if (denominator < 1e-10) {
             return 0.0;
         }
+
         return dotProduct / denominator;
     }
 
-    // 🔹 Confidence Level Calculation (CBI / Police Logic)
+    // 🔹 Confidence Level
     public ConfidenceLevel calculateConfidence(double similarity) {
 
-        if (similarity >= 0.90) {
-            return ConfidenceLevel.VERY_HIGH;
-        } else if (similarity >= 0.80) {
-            return ConfidenceLevel.HIGH;
-        } else if (similarity >= 0.70) {
-            return ConfidenceLevel.MEDIUM;
-        } else {
-            return ConfidenceLevel.LOW;
-        }
+        if (similarity >= 0.90) return ConfidenceLevel.VERY_HIGH;
+        if (similarity >= 0.80) return ConfidenceLevel.HIGH;
+        if (similarity >= 0.70) return ConfidenceLevel.MEDIUM;
+
+        return ConfidenceLevel.LOW;
     }
 }

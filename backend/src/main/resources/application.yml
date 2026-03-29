@@ -34,7 +34,8 @@ mpis:
     dedup-window-seconds: 5
 
   jwt:
-    secret: ${MPIS_JWT_SECRET}
+    # 🔥 FIXED (NO ENV REQUIRED)
+    secret: mysupersecretkeythatisatleast32characterslong123
     expiration-ms: 86400000
 
 management:

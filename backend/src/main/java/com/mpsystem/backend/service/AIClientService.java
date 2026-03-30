@@ -27,7 +27,7 @@ public class AIClientService {
     }
 
     // =========================================================
-    // 🔥 MATCH (FOR FORENSIC SEARCH)
+    // 🔥 MATCH (FORENSIC SEARCH)
     // =========================================================
     @SuppressWarnings("unchecked")
     public Map<String, Object> matchFace(MultipartFile file) {
@@ -35,7 +35,7 @@ public class AIClientService {
         try {
             String url = aiEngineUrl + "/match";
 
-            log.info("Calling AI Engine MATCH: {}", url);
+            log.info("🔥 Calling AI MATCH: {}", url);
 
             ByteArrayResource resource = new ByteArrayResource(file.getBytes()) {
                 @Override
@@ -45,11 +45,10 @@ public class AIClientService {
             };
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("file", resource);
+            body.add("file", resource); // 🔥 MUST BE "file"
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-            headers.setAccept(MediaType.parseMediaTypes("application/json"));
 
             HttpEntity<MultiValueMap<String, Object>> request =
                     new HttpEntity<>(body, headers);
@@ -63,22 +62,28 @@ public class AIClientService {
 
             Map<String, Object> responseBody = response.getBody();
 
-            if (responseBody == null || !responseBody.containsKey("status")) {
-                throw new RuntimeException("Invalid AI response: " + responseBody);
+            // 🔥 FIX 1: handle empty response
+            if (responseBody == null) {
+                throw new RuntimeException("Empty AI response");
             }
 
-            log.info("AI MATCH Response: {}", responseBody);
+            // 🔥 FIX 2: handle AI errors
+            if (responseBody.containsKey("error")) {
+                throw new RuntimeException("AI Error: " + responseBody.get("error"));
+            }
+
+            log.info("✅ AI MATCH Response: {}", responseBody);
 
             return responseBody;
 
         } catch (Exception e) {
-            log.error("AI MATCH call failed", e);
+            log.error("❌ AI MATCH failed", e);
             throw new RuntimeException("Failed to call AI Engine: " + e.getMessage(), e);
         }
     }
 
     // =========================================================
-    // 🔥 EMBEDDING (FOR UPLOAD / REGISTRATION)
+    // 🔥 EMBEDDING (UPLOAD / REGISTRATION)
     // =========================================================
     @SuppressWarnings("unchecked")
     public List<Double> extractEmbedding(MultipartFile file) {
@@ -86,7 +91,7 @@ public class AIClientService {
         try {
             String url = aiEngineUrl + "/extract-embedding";
 
-            log.info("Calling AI Engine EMBEDDING: {}", url);
+            log.info("🔥 Calling AI EMBEDDING: {}", url);
 
             ByteArrayResource resource = new ByteArrayResource(file.getBytes()) {
                 @Override
@@ -96,7 +101,7 @@ public class AIClientService {
             };
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("file", resource);
+            body.add("file", resource); // 🔥 MUST BE "file"
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -123,18 +128,18 @@ public class AIClientService {
                 throw new RuntimeException("Invalid embedding size");
             }
 
-            log.info("Embedding extracted successfully");
+            log.info("✅ Embedding extracted successfully");
 
             return embedding;
 
         } catch (Exception e) {
-            log.error("AI EMBEDDING call failed", e);
+            log.error("❌ AI EMBEDDING failed", e);
             throw new RuntimeException("Embedding extraction failed: " + e.getMessage(), e);
         }
     }
 
     // =========================================================
-    // 🔥 SAFE FILENAME HELPER
+    // 🔥 SAFE FILENAME
     // =========================================================
     private String safeFilename(MultipartFile file) {
         String name = file.getOriginalFilename();

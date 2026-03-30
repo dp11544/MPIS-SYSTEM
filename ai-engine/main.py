@@ -80,7 +80,6 @@ def get_matcher_safe():
 
 
 # ---------------- Register Routes ----------------
-# 🔥 FIXED (REMOVED EXTRA ARGUMENT)
 api_server.register_routes(
     app,
     get_engine_safe,
@@ -89,13 +88,7 @@ api_server.register_routes(
 )
 
 
-# ---------------- Health Check (OPTIONAL BUT USEFUL) ----------------
-@app.route("/health", methods=["GET"])
-def health():
-    return {
-        "status": "ok",
-        "service": "mpis-ai-engine",
-    }, 200
+# ❌ REMOVE HEALTH ROUTE FROM HERE (ALREADY IN api_server.py)
 
 
 # ---------------- LOCAL RUN ----------------

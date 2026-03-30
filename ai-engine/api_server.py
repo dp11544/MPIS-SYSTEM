@@ -1,5 +1,5 @@
 """
-api_server.py — Internal AI Engine REST API (STABLE + LAZY LOAD VERSION)
+api_server.py — CLEAN PRODUCTION VERSION (USE THIS)
 """
 
 import logging
@@ -7,7 +7,7 @@ import time
 
 import cv2
 import numpy as np
-from flask import request, jsonify, Response
+from flask import request, jsonify
 
 try:
     from flask_limiter import Limiter
@@ -32,26 +32,20 @@ from config import (
 
 logger = logging.getLogger(__name__)
 
-# 🔥 NOW THESE ARE GETTERS (IMPORTANT)
 _engine_getter = None
 _db_loader_getter = None
 _matcher_getter = None
-_cam_manager = None
 _start_time = time.time()
 
 
 # ---------------------------------------------------------
-# ROUTE REGISTRATION
-# ---------------------------------------------------------
+def register_routes(app, engine, db_loader, matcher):
 
-def register_routes(app, engine, db_loader, matcher, cam_manager=None):
-
-    global _engine_getter, _db_loader_getter, _matcher_getter, _cam_manager, _start_time
+    global _engine_getter, _db_loader_getter, _matcher_getter, _start_time
 
     _engine_getter = engine
     _db_loader_getter = db_loader
     _matcher_getter = matcher
-    _cam_manager = cam_manager
     _start_time = time.time()
 
     app.config["JSON_SORT_KEYS"] = False
@@ -86,62 +80,33 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
 
         db_size = 0
         try:
-            if _db_loader_getter is not None:
-                db = _db_loader_getter()
-                db_size = len(db.get_snapshot())
+            db = _db_loader_getter()
+            db_size = len(db.get_snapshot())
         except Exception:
-            db_size = 0
+            pass
 
         return jsonify({
             "status": "ok",
             "model": MODEL_NAME,
-            "algorithmVersion": ALGORITHM_VERSION,
-            "modelUsed": MODEL_USED,
             "embeddingDim": EMBEDDING_DIM,
             "uptimeSeconds": uptime_seconds,
             "personsInDB": db_size,
         }), 200
 
     # ---------------------------------------------------------
-    # VIDEO FEED (optional)
+    # 🔥 MAIN MATCH ENDPOINT (ONLY ONE YOU NEED)
     # ---------------------------------------------------------
-    @app.route("/video_feed")
-    def video_feed():
-        def generate_frames():
-            while True:
-                try:
-                    if _cam_manager is not None:
-                        frame = _cam_manager.get_latest_frame()
-                        if frame is not None:
-                            ret, buffer = cv2.imencode('.jpg', frame)
-                            if ret:
-                                frame_bytes = buffer.tobytes()
-                                yield (b'--frame\r\n'
-                                       b'Content-Type: image/jpeg\r\n\r\n' +
-                                       frame_bytes + b'\r\n')
-                    time.sleep(0.1)
-                except Exception as e:
-                    logger.error("[VIDEO ERROR]: %s", e)
-                    time.sleep(0.5)
-
-        return Response(generate_frames(),
-                        mimetype='multipart/x-mixed-replace; boundary=frame')
-
-    # ---------------------------------------------------------
-    # EXTRACT EMBEDDING
-    # ---------------------------------------------------------
-    @app.route("/extract-embedding", methods=["POST"])
+    @app.route("/match", methods=["POST"])
     @limiter.limit(API_RATE_LIMIT)
-    def extract_embedding():
+    def match():
 
-        if "image" not in request.files:
-            return _error("No image file provided", 400)
+        # Accept both "file" and "image"
+        file = request.files.get("file") or request.files.get("image")
 
-        file = request.files["image"]
+        if not file:
+            return _error("No file provided", 400)
 
-        if not file or file.filename == "":
-            return _error("Empty image upload", 400)
-
+        # Decode image
         try:
             image_bytes = file.read()
             arr = np.frombuffer(image_bytes, dtype=np.uint8)
@@ -151,74 +116,35 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
                 return _error("Invalid image format", 400)
 
         except Exception as exc:
-            logger.error("[API] image decode error: %s", exc)
+            logger.error("[API] decode error: %s", exc)
             return _error("Image decode failed", 400)
 
-        # 🔥 LAZY LOAD ENGINE
+        # Load components
         try:
             engine = _engine_getter()
-        except Exception as e:
-            logger.error("[API] engine init failed: %s", e)
-            return _error("Engine initialization failed", 500)
-
-        try:
-            embedding = engine.get_embedding_from_image(image)
-        except Exception as e:
-            logger.error("[API] embedding error: %s", e)
-            return _error("Embedding extraction failed", 500)
-
-        if embedding is None:
-            return _error("No face detected", 400)
-
-        return jsonify({
-            "embedding": embedding.tolist(),
-            "dimension": EMBEDDING_DIM,
-            "model": MODEL_NAME,
-        }), 200
-
-    # ---------------------------------------------------------
-    # RECOGNIZE FACE
-    # ---------------------------------------------------------
-    @app.route("/recognize-face", methods=["POST"])
-    @limiter.limit(API_RATE_LIMIT)
-    def recognize_face():
-
-        body = request.get_json(silent=True)
-
-        if not body or "embedding" not in body:
-            return _error("JSON must contain 'embedding'", 400)
-
-        raw_emb = body["embedding"]
-
-        if not isinstance(raw_emb, list) or len(raw_emb) != EMBEDDING_DIM:
-            return _error(f"Embedding must be {EMBEDDING_DIM} floats", 400)
-
-        try:
-            embedding = np.array(raw_emb, dtype=np.float32)
-            norm = np.linalg.norm(embedding)
-
-            if norm == 0:
-                return _error("Invalid embedding (zero vector)", 400)
-
-            embedding = embedding / norm
-
-        except Exception as exc:
-            return _error(f"Invalid embedding: {exc}", 400)
-
-        # 🔥 LAZY LOAD MATCHER + DB
-        try:
             db_loader = _db_loader_getter()
             matcher = _matcher_getter()
         except Exception as e:
             logger.error("[API] init failed: %s", e)
             return _error("Engine initialization failed", 500)
 
+        # Extract embedding
+        embedding = engine.get_embedding_from_image(image)
+
+        if embedding is None:
+            return jsonify({
+                "status": "NO_FACE",
+                "similarity": 0.0,
+                "allScores": {}
+            }), 200
+
+        # Perform matching
         try:
             database = db_loader.get_snapshot()
             result = matcher.match(embedding, database)
         except Exception as exc:
-            logger.error("[API] recognition error: %s", exc)
-            return _error("Recognition failed", 500)
+            logger.error("[API] match error: %s", exc)
+            return _error("Matching failed", 500)
 
         response = {
             "status": result.status,
@@ -233,20 +159,8 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
         return jsonify(response), 200
 
     # ---------------------------------------------------------
-    # ERROR HANDLERS
+    # ERROR HANDLER
     # ---------------------------------------------------------
-    @app.errorhandler(404)
-    def not_found(e):
-        return _error("Endpoint not found", 404)
-
-    @app.errorhandler(405)
-    def method_not_allowed(e):
-        return _error("Method not allowed", 405)
-
-    @app.errorhandler(429)
-    def rate_limit_exceeded(e):
-        return _error("Rate limit exceeded", 429)
-
     @app.errorhandler(500)
     def internal_error(e):
         logger.error("[API] internal error: %s", e)
@@ -254,11 +168,8 @@ def register_routes(app, engine, db_loader, matcher, cam_manager=None):
 
 
 # ---------------------------------------------------------
-# HELPERS
-# ---------------------------------------------------------
-
 def _error(message: str, code: int):
     return jsonify({
-        "error": message,
-        "status": code
+        "status": "ERROR",
+        "message": message
     }), code

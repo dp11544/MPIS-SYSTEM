@@ -1,20 +1,15 @@
 import axios from 'axios';
 import toast from '../utils/toast';
 
-/**
- * ✅ SAFE BASE URL (prevents double /api issue)
- */
 const BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
 if (!BASE_URL) {
-    throw new Error("VITE_API_URL is not defined. Check your env variables.");
+    throw new Error("VITE_API_URL is not defined.");
 }
 
-/**
- * 🔥 API instances
- */
+// 🔥 FIXED HERE
 const api = axios.create({
-    baseURL: `${BASE_URL}/api`,
+    baseURL: BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -22,7 +17,7 @@ const api = axios.create({
 });
 
 export const silentApi = axios.create({
-    baseURL: `${BASE_URL}/api`,
+    baseURL: BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -31,9 +26,6 @@ export const silentApi = axios.create({
 
 let _isRedirecting = false;
 
-/**
- * 🔐 Attach JWT token
- */
 const attachToken = (config) => {
     const token = localStorage.getItem('token');
 
@@ -49,34 +41,17 @@ const attachToken = (config) => {
 api.interceptors.request.use(attachToken);
 silentApi.interceptors.request.use(attachToken);
 
-/**
- * 🔥 Common error handler
- */
 const handleCommonErrors = (status, message) => {
     switch (status) {
-        case 400:
-            toast.error(message || "Bad request");
-            break;
-        case 403:
-            toast.error("Access denied");
-            break;
-        case 408:
-            toast.error("Request timeout");
-            break;
-        case 429:
-            toast.warn("Too many requests");
-            break;
-        case 500:
-            toast.error("Server error");
-            break;
-        default:
-            toast.error(message || "Something went wrong");
+        case 400: toast.error(message || "Bad request"); break;
+        case 403: toast.error("Access denied"); break;
+        case 408: toast.error("Request timeout"); break;
+        case 429: toast.warn("Too many requests"); break;
+        case 500: toast.error("Server error"); break;
+        default: toast.error(message || "Something went wrong");
     }
 };
 
-/**
- * 🔥 Response interceptor
- */
 api.interceptors.response.use(
     (response) => {
         const data = response.data;
@@ -101,7 +76,7 @@ api.interceptors.response.use(
 
     async (error) => {
         if (!error.response) {
-            toast.error("Server not reachable or sleeping (Render cold start)");
+            toast.error("Server not reachable (Render cold start)");
             return Promise.reject(error);
         }
 
@@ -109,9 +84,6 @@ api.interceptors.response.use(
         const message = data?.message || "Error";
         const url = error.config?.url || "";
 
-        /**
-         * 🔐 Handle 401 (Session Expired)
-         */
         if (status === 401 && !url.includes("/auth")) {
 
             if (_isRedirecting) return Promise.reject(error);
@@ -125,9 +97,7 @@ api.interceptors.response.use(
             try {
                 const { default: webSocketService } = await import('../services/WebSocketService');
                 webSocketService?.disconnect?.();
-            } catch (e) {
-                console.warn("WebSocket cleanup failed");
-            }
+            } catch {}
 
             window.location.href = '/login';
         } else {
@@ -138,17 +108,11 @@ api.interceptors.response.use(
     }
 );
 
-/**
- * 🔥 Silent API (no toast)
- */
 silentApi.interceptors.response.use(
     (response) => response,
     (error) => Promise.reject(error)
 );
 
-/**
- * ✅ IMAGE URL BUILDER (CRITICAL FIX)
- */
 export const buildImageUrl = (path) => {
     if (!path) return null;
 

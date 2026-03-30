@@ -1,6 +1,6 @@
 """
 embedding_engine.py — Production-grade InsightFace embedding engine for MPIS.
-(STABLE VERSION FOR RAILWAY)
+(FIXED + HARDENED VERSION)
 """
 
 import logging
@@ -68,8 +68,9 @@ class EmbeddingEngine:
                 providers=[provider],
             )
 
+            # 🔥 FIX: Force CPU-safe mode
             self.app.prepare(
-                ctx_id=0,
+                ctx_id=-1,  # <-- IMPORTANT FIX
                 det_size=DETECTION_INPUT_SIZE,
             )
 
@@ -84,9 +85,6 @@ class EmbeddingEngine:
             self._load_time,
             EMBEDDING_DIM,
         )
-
-        # ❌ REMOVED warm_up() (IMPORTANT FIX)
-        # self.warm_up()
 
     # -------------------------------------------------------
 
@@ -124,6 +122,7 @@ class EmbeddingEngine:
 
         for face in faces:
             emb = getattr(face, "normed_embedding", None)
+
             if self.validate_embedding(emb):
                 valid_faces.append(face)
 
@@ -148,12 +147,21 @@ class EmbeddingEngine:
         self._record_inference(elapsed)
 
         if not faces:
+            logger.info("[EMBEDDING ENGINE] No faces detected")
             return None
 
+        # Pick highest confidence face
         best = max(faces, key=lambda f: float(getattr(f, "det_score", 0)))
 
         emb = getattr(best, "normed_embedding", None)
-        return self.normalize_embedding(emb)
+
+        normalized = self.normalize_embedding(emb)
+
+        if normalized is None:
+            logger.warning("[EMBEDDING ENGINE] Invalid embedding after normalization")
+            return None
+
+        return normalized
 
     # -------------------------------------------------------
 
@@ -166,7 +174,14 @@ class EmbeddingEngine:
         if emb.shape != (EMBEDDING_DIM,):
             return False
 
-        return float(np.linalg.norm(emb)) > 1e-6
+        if not np.all(np.isfinite(emb)):
+            return False
+
+        norm = float(np.linalg.norm(emb))
+        if norm < 1e-6 or not np.isfinite(norm):
+            return False
+
+        return True
 
     # -------------------------------------------------------
 

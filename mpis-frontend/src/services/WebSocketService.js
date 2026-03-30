@@ -1,13 +1,10 @@
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
-/**
- * ✅ ENV WebSocket URL (MANDATORY)
- */
 const WS_URL = import.meta.env.VITE_WS_URL;
 
 if (!WS_URL) {
-    throw new Error("VITE_WS_URL is not defined. Check your env variables.");
+    throw new Error("VITE_WS_URL is not defined");
 }
 
 class WebSocketService {
@@ -15,24 +12,12 @@ class WebSocketService {
         this.client = null;
         this.subscriptions = {};
         this.pendingSubscriptions = {};
-        this._listeners = new Map();
         this._connected = false;
         this._connecting = false;
-        this._listenerIdCounter = 0;
-    }
-
-    _notifyListeners(isConnected) {
-        this._connected = isConnected;
-        this._listeners.forEach(cb => {
-            try { cb(isConnected); } catch (_) {}
-        });
     }
 
     connect() {
-        if (this.client && (this.client.active || this._connecting)) {
-            console.log('[WS] Already connected or connecting');
-            return;
-        }
+        if (this.client?.active || this._connecting) return;
 
         this._connecting = true;
         console.log('[WS] Connecting →', WS_URL);
@@ -45,58 +30,33 @@ class WebSocketService {
             heartbeatOutgoing: 10000,
 
             onConnect: () => {
-                this._connecting = false;
                 console.log('[WS] Connected ✓');
+                this._connecting = false;
+                this._connected = true;
 
                 Object.entries(this.pendingSubscriptions).forEach(([topic, cb]) => {
-                    this._executeSubscription(topic, cb);
+                    this._subscribeNow(topic, cb);
                 });
-
-                this._notifyListeners(true);
             },
 
             onStompError: (frame) => {
-                console.error('[WS] STOMP error:', frame.headers?.message, frame.body);
+                console.error('[WS] STOMP error:', frame.body);
             },
 
-            onWebSocketClose: (event) => {
-                console.warn('[WS] Closed:', event?.code, event?.reason);
+            onWebSocketClose: () => {
+                console.warn('[WS] Disconnected');
+                this._connected = false;
                 this.subscriptions = {};
-                this._notifyListeners(false);
-            },
-
-            onWebSocketError: (error) => {
-                console.error('[WS] Error:', error);
-                this._notifyListeners(false);
-            },
-
-            onDisconnect: () => {
-                console.log('[WS] Disconnected');
-                this.subscriptions = {};
-                this._notifyListeners(false);
-            },
+            }
         });
 
         this.client.activate();
     }
 
-    setConnectionListener(callback, id) {
-        if (!callback) {
-            if (id) this._listeners.delete(id);
-            return;
-        }
+    _subscribeNow(topic, callback) {
+        if (!this.client?.connected) return;
 
-        const listenerId = id || `listener_${++this._listenerIdCounter}`;
-        this._listeners.set(listenerId, callback);
-
-        try { callback(this._connected); } catch (_) {}
-
-        return () => this._listeners.delete(listenerId);
-    }
-
-    _executeSubscription(topic, callback) {
-        if (!this.client?.connected) return null;
-        if (this.subscriptions[topic]) return this.subscriptions[topic];
+        if (this.subscriptions[topic]) return;
 
         console.log('[WS] Subscribing →', topic);
 
@@ -106,38 +66,42 @@ class WebSocketService {
             try {
                 callback(JSON.parse(message.body));
             } catch (e) {
-                console.error('[WS] JSON error:', e);
+                console.error('[WS] JSON parse error', e);
             }
         });
 
         this.subscriptions[topic] = sub;
-        return sub;
     }
 
     subscribe(topic, callback) {
         this.pendingSubscriptions[topic] = callback;
-        return this._executeSubscription(topic, callback);
+
+        if (!this.client) {
+            this.connect(); // 🔥 AUTO CONNECT
+        }
+
+        this._subscribeNow(topic, callback);
     }
 
     unsubscribe(topic) {
         delete this.pendingSubscriptions[topic];
 
         if (this.subscriptions[topic]) {
-            try { this.subscriptions[topic].unsubscribe(); } catch (_) {}
+            this.subscriptions[topic].unsubscribe();
             delete this.subscriptions[topic];
         }
     }
 
     disconnect() {
-        Object.keys(this.pendingSubscriptions).forEach(t => this.unsubscribe(t));
-
         if (this.client) {
             this.client.deactivate();
             this.client = null;
         }
 
+        this.subscriptions = {};
+        this.pendingSubscriptions = {};
+        this._connected = false;
         this._connecting = false;
-        console.log('[WS] Fully disconnected');
     }
 }
 

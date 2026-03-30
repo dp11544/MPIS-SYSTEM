@@ -36,7 +36,6 @@ Mobile number
 Temporary password (hashed)
 
 Status = RESET_REQUIRED
-
 📌 Officer cannot skip password reset
 
 Step B — First login (mandatory reset)

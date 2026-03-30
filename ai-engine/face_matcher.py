@@ -82,13 +82,29 @@ class FaceMatcher:
 
         t0 = time.monotonic()
 
-        # Validate input embedding
+        # ------------------------------------------------------
+        # VALIDATE + NORMALIZE QUERY EMBEDDING
+        # ------------------------------------------------------
+
         if not isinstance(embedding, np.ndarray) or embedding.shape != (EMBEDDING_DIM,):
             logger.warning(
                 "[FACE MATCHER] Invalid query embedding shape=%s",
                 getattr(embedding, "shape", "N/A"),
             )
             return self._no_match()
+
+        if not np.all(np.isfinite(embedding)):
+            logger.warning("[FACE MATCHER] Query embedding contains NaN/Inf")
+            return self._no_match()
+
+        norm = np.linalg.norm(embedding)
+        if norm == 0 or not np.isfinite(norm):
+            logger.warning("[FACE MATCHER] Query embedding norm invalid")
+            return self._no_match()
+
+        embedding = embedding / norm
+
+        # ------------------------------------------------------
 
         if not database:
             logger.warning("[FACE MATCHER] Empty database")
@@ -97,7 +113,7 @@ class FaceMatcher:
         scores: List[Tuple[str, str, float]] = []
 
         # ------------------------------------------------------
-        # CORE MATCH LOOP (FIXED)
+        # CORE MATCH LOOP
         # ------------------------------------------------------
 
         for person in database:
@@ -113,7 +129,6 @@ class FaceMatcher:
 
             for stored_emb in emb_list:
 
-                # Safety checks
                 if not isinstance(stored_emb, np.ndarray):
                     continue
 
@@ -123,18 +138,23 @@ class FaceMatcher:
                 if not np.all(np.isfinite(stored_emb)):
                     continue
 
-                # ❗ DO NOT NORMALIZE AGAIN (already normalized in DB loader)
+                norm = np.linalg.norm(stored_emb)
+                if norm == 0 or not np.isfinite(norm):
+                    continue
+
+                stored_emb = stored_emb / norm
 
                 score = float(np.dot(embedding, stored_emb))
 
-                # 🔥 DEBUG (CRITICAL)
-                print(f"[DEBUG] {name} similarity = {score:.4f}")
+                logger.debug("[SIMILARITY] %s = %.4f", name, score)
 
                 if score > best_score:
                     best_score = score
 
             if best_score >= 0:
                 scores.append((pid, name, best_score))
+
+        # ------------------------------------------------------
 
         if not scores:
             logger.warning("[FACE MATCHER] No valid scores computed")

@@ -38,20 +38,18 @@ public class UploadController {
     @PostMapping(value = "/{personId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> uploadPhoto(
             @PathVariable String personId,
-            @RequestParam("image") MultipartFile image) {
+            @RequestParam("file") MultipartFile file) {
 
         try {
             // ✅ Validate
-            if (image == null || image.isEmpty()) {
+            if (file == null || file.isEmpty()) {
                 return ResponseEntity
                         .status(HttpStatus.BAD_REQUEST)
                         .body("Image file is empty");
             }
 
-            byte[] imageBytes = image.getBytes();
-
             // ✅ Safe filename
-            String originalFilename = image.getOriginalFilename();
+            String originalFilename = file.getOriginalFilename();
             if (originalFilename == null) {
                 originalFilename = "image.jpg";
             }
@@ -60,8 +58,10 @@ public class UploadController {
                     .replaceAll("\\s+", "_")
                     .replaceAll("[^a-zA-Z0-9._-]", "");
 
-            // 🔥 CLOUDINARY UPLOAD (MAIN FIX)
-            Map uploadResult = cloudinary.uploader().upload(
+            byte[] imageBytes = file.getBytes();
+
+            // 🔥 CLOUDINARY UPLOAD
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(
                     imageBytes,
                     ObjectUtils.asMap("public_id", System.currentTimeMillis() + "_" + safeFilename)
             );
@@ -73,13 +73,19 @@ public class UploadController {
             // ✅ Fetch person
             Person person = personService.getPersonById(personId);
 
-            // ✅ AI embedding
-            List<Double> embedding = aiClientService.getEmbedding(imageBytes, safeFilename);
+            // 🔥 GET EMBEDDING (FIXED METHOD)
+            List<Double> embedding = aiClientService.extractEmbedding(file);
 
-            // 🔥 SAVE CLOUDINARY URL
+            if (embedding == null || embedding.size() != 512) {
+                return ResponseEntity
+                        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Failed to extract embedding");
+            }
+
+            // ✅ SAVE IMAGE URL
             person.setPhotoPath(imageUrl);
 
-            // ✅ Safe embedding handling
+            // ✅ INIT LIST IF NULL
             if (person.getFaceEmbeddings() == null) {
                 person.setFaceEmbeddings(new java.util.ArrayList<>());
             }
@@ -88,7 +94,7 @@ public class UploadController {
 
             personService.savePerson(person);
 
-            return ResponseEntity.ok("Photo uploaded to Cloudinary and embedding stored");
+            return ResponseEntity.ok("Photo uploaded and embedding stored");
 
         } catch (com.mpsystem.backend.exception.FaceDetectionException e) {
 

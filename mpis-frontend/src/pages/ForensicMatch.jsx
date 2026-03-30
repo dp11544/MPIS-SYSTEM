@@ -88,64 +88,64 @@ const ForensicMatch = () => {
         analyzeImage();
     };
 
-    const analyzeImage = async () => {
-        if (!selectedFile) return;
+const analyzeImage = async () => {
+    if (!selectedFile) return;
 
-        setIsAnalyzing(true);
-        setError(null);
-        setResult(null);
+    setIsAnalyzing(true);
+    setError(null);
+    setResult(null);
 
-        try {
-    // Stage 1: extracting
-    setProcessingStage('extracting');
+    try {
+        setProcessingStage('extracting');
 
-    const formData = new FormData();
-    formData.append('image', selectedFile);
+        const formData = new FormData();
 
-    // small delay so user sees extracting stage
-    await new Promise(resolve => setTimeout(resolve, 400));
+        // 🔥 FIX: MUST BE "file"
+        formData.append('file', selectedFile);
 
-    // Stage 2: matching
-    setProcessingStage('matching');
+        await new Promise(resolve => setTimeout(resolve, 300));
 
-    const matchResponse = await api.post(
-        '/forensic/match-image',
-        formData,
-        {
-            headers: { 'Content-Type': 'multipart/form-data' }
+        setProcessingStage('matching');
+
+        const response = await api.post(
+            '/forensic/match-image',
+            formData,
+            {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            }
+        );
+
+        const data = response.data;
+
+        // 🔥 FIX: HANDLE NEW API FORMAT
+        setResult({
+            match: data.status === 'CONFIDENT_MATCH',
+            personName: data.personName || 'Unknown',
+            personId: data.personId || null,
+            similarity: data.similarity || 0,
+            confidenceLevel: getConfidenceLevel(data.similarity),
+            status: data.status
+        });
+
+    } catch (err) {
+        console.error('Forensic analysis error:', err);
+
+        if (!err.response) {
+            setError('Backend not reachable.');
+        } else if (err.response.status === 404) {
+            setError('API endpoint not found.');
+        } else if (err.response.status === 500) {
+            setError('Server error during analysis.');
+        } else {
+            setError(err.response?.data?.message || 'Analysis failed.');
         }
-    );
 
-    const matchData = matchResponse.data;
-
-    // Transform response to UI format
-    setResult({
-        match: matchData.status === 'MATCH_FOUND',
-        personName: matchData.matchedPerson || 'Unknown',
-        personId: matchData.caseId || null, // ✅ FIXED
-        similarity: matchData.similarity || 0,
-        confidenceLevel: matchData.confidenceLevel,
-        status: matchData.status
-    });
-
-        } catch (err) {
-            console.error('Forensic analysis error:', err);
-            
- if (!err.response) {
-    setError(' Backend not reachable. Check server deployment. ');
-} else if (err.response.status === 404) {
-    setError('API endpoint not found.');
-} else if (err.response.status === 500) {
-    setError('Server error during analysis.');
-} else {
-    setError(err.response?.data?.message || 'Analysis failed.');
-}
-        } finally {
-            setIsAnalyzing(false);
-            setProcessingStage('');
-        }
-    };
-
+    } finally {
+        setIsAnalyzing(false);
+        setProcessingStage('');
+    }
+};
+    
     const getConfidenceLevel = (similarity) => {
         if (similarity >= 0.85) return 'VERY HIGH';
         if (similarity >= 0.70) return 'HIGH';

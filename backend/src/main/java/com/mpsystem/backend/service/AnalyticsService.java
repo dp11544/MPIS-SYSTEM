@@ -3,6 +3,7 @@ package com.mpsystem.backend.service;
 import com.mpsystem.backend.dto.AnalyticsResponse;
 import com.mpsystem.backend.dto.AnalyticsResponse.DayData;
 import com.mpsystem.backend.model.CameraStatus;
+import com.mpsystem.backend.model.Person;
 import com.mpsystem.backend.repository.AlertRepository;
 import com.mpsystem.backend.repository.CameraRepository;
 import com.mpsystem.backend.repository.PersonRepository;
@@ -30,37 +31,40 @@ public class AnalyticsService {
 
     public AnalyticsResponse getAnalytics(LocalDate startDate, LocalDate endDate) {
 
-        // 🔴 VALIDATION
         if (startDate == null || endDate == null || startDate.isAfter(endDate)) {
             log.warn("Invalid date range for analytics");
             return new AnalyticsResponse();
         }
 
-        // Camera stats
         long totalCameras = cameraRepository.count();
         long onlineCameras = cameraRepository.countByStatus(CameraStatus.ONLINE);
 
-        // Alerts today
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         long alertsToday = alertRepository.countByDetectedAtAfter(startOfDay);
 
-        // Total persons
         long totalPersons = personRepository.count();
 
-        // Average confidence
         double avgConfidence = calculateAverageConfidence();
 
-        // Timeline
         List<DayData> alertTimeline = calculateAlertTimeline(startDate, endDate);
 
-        // Gender distribution
-        long maleCount = personRepository.countByGenderIgnoreCase("Male")
-                + personRepository.countByGenderIgnoreCase("M");
+        // 🔥 FIXED GENDER COUNT (SAFE)
+        List<Person> allPersons = personRepository.findAll();
 
-        long femaleCount = personRepository.countByGenderIgnoreCase("Female")
-                + personRepository.countByGenderIgnoreCase("F");
+        long maleCount = allPersons.stream()
+                .filter(p -> {
+                    String g = p.getGender();
+                    return g != null && g.trim().toLowerCase().startsWith("m");
+                })
+                .count();
 
-        // Age groups
+        long femaleCount = allPersons.stream()
+                .filter(p -> {
+                    String g = p.getGender();
+                    return g != null && g.trim().toLowerCase().startsWith("f");
+                })
+                .count();
+
         Map<String, Long> ageGroups = calculateAgeGroups();
 
         return AnalyticsResponse.builder()
@@ -78,19 +82,21 @@ public class AnalyticsService {
                 .build();
     }
 
+    // ---------------------------------------------------------
     private double calculateAverageConfidence() {
 
         var recentAlerts = alertRepository.findTop50ByOrderByDetectedAtDesc();
 
-        if (recentAlerts.isEmpty()) return 0.0;
+        if (recentAlerts == null || recentAlerts.isEmpty()) return 0.0;
 
         double sum = recentAlerts.stream()
                 .mapToDouble(a -> a.getSimilarity())
                 .sum();
 
-        return Math.round((sum / recentAlerts.size()) * 1000.0) / 10.0;
+        return Math.round((sum / recentAlerts.size()) * 100.0 * 10.0) / 10.0;
     }
 
+    // ---------------------------------------------------------
     private List<DayData> calculateAlertTimeline(LocalDate startDate, LocalDate endDate) {
 
         List<DayData> timeline = new ArrayList<>();
@@ -98,7 +104,6 @@ public class AnalyticsService {
 
         DateTimeFormatter labelFormatter;
 
-        // 🔥 DAILY
         if (daysBetween <= 31) {
 
             labelFormatter = DateTimeFormatter.ofPattern("MMM d");
@@ -117,9 +122,7 @@ public class AnalyticsService {
                         .build());
             }
 
-        }
-        // 🔥 MONTHLY
-        else if (daysBetween <= 366) {
+        } else if (daysBetween <= 366) {
 
             LocalDate monthStart = startDate.withDayOfMonth(1);
 
@@ -147,9 +150,7 @@ public class AnalyticsService {
                 monthStart = monthStart.plusMonths(1);
             }
 
-        }
-        // 🔥 QUARTERLY
-        else {
+        } else {
 
             LocalDate quarterStart = startDate.withDayOfMonth(1);
             int startMonth = ((quarterStart.getMonthValue() - 1) / 3) * 3 + 1;
@@ -185,14 +186,20 @@ public class AnalyticsService {
         return timeline;
     }
 
+    // ---------------------------------------------------------
     private Map<String, Long> calculateAgeGroups() {
 
         Map<String, Long> ageGroups = new LinkedHashMap<>();
 
         ageGroups.put("0-18", personRepository.countByAgeLessThanEqual(18));
         ageGroups.put("19-35", personRepository.countByAgeBetween(19, 35));
-        ageGroups.put("36-50", personRepository.countByAgeBetween(36, 50));
-        ageGroups.put("50+", personRepository.countByAgeGreaterThan(50));
+        ageGroups.put("36-49", personRepository.countByAgeBetween(36, 49));
+
+        // 🔥 FIX: avoid missing method
+        long above50 = personRepository.count() -
+                personRepository.countByAgeLessThanEqual(49);
+
+        ageGroups.put("50+", above50);
 
         return ageGroups;
     }

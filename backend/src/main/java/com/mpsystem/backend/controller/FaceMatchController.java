@@ -39,54 +39,81 @@ public class FaceMatchController {
                 );
             }
 
-            // 🔥 CALL AI DIRECTLY
+            // 🔥 CALL AI
             Map<String, Object> aiResponse = aiClientService.matchFace(file);
 
-            String status = (String) aiResponse.get("status");
-            Double similarity = (Double) aiResponse.get("similarity");
+            if (aiResponse == null) {
+                return ResponseEntity.internalServerError().body(
+                        Map.of("status", "ERROR", "message", "Empty AI response")
+                );
+            }
 
-            // 🔥 HANDLE NO FACE
-            if ("NO_FACE".equals(status)) {
+            // 🔥 SAFE READ
+            String status = aiResponse.get("status") != null
+                    ? aiResponse.get("status").toString()
+                    : "UNKNOWN";
+
+            Double similarity = null;
+            if (aiResponse.get("similarity") instanceof Number) {
+                similarity = ((Number) aiResponse.get("similarity")).doubleValue();
+            }
+
+            // 🔥 NO FACE
+            if ("NO_FACE".equalsIgnoreCase(status)) {
                 return ResponseEntity.ok(aiResponse);
             }
 
-            // 🔥 HANDLE MATCH
-            if ("CONFIDENT_MATCH".equals(status)) {
+            // 🔥 MATCH
+            if ("CONFIDENT_MATCH".equalsIgnoreCase(status)) {
 
-                String personId = (String) aiResponse.get("personId");
-                String personName = (String) aiResponse.get("personName");
+                String personId = aiResponse.get("personId") != null
+                        ? aiResponse.get("personId").toString()
+                        : null;
 
-                ConfidenceLevel confidence = mapConfidence(similarity);
+                String personName = aiResponse.get("personName") != null
+                        ? aiResponse.get("personName").toString()
+                        : "Unknown";
 
-                LocalDateTime tenMinutesAgo = LocalDateTime.now().minusMinutes(10);
+                if (personId != null) {
 
-                boolean alertExists = alertRepository
-                        .existsByPersonIdAndDetectedAtAfter(personId, tenMinutesAgo);
+                    ConfidenceLevel confidence = mapConfidence(similarity);
 
-                if (!alertExists) {
-                    alertRepository.save(
-                            new Alert(
-                                    personId,
-                                    personName,
-                                    similarity,
-                                    confidence,
-                                    "UPLOAD",
-                                    "AI-Match-v2"
-                            )
-                    );
+                    LocalDateTime tenMinutesAgo = LocalDateTime.now().minusMinutes(10);
+
+                    boolean alertExists = alertRepository
+                            .existsByPersonIdAndDetectedAtAfter(personId, tenMinutesAgo);
+
+                    if (!alertExists) {
+                        alertRepository.save(
+                                new Alert(
+                                        personId,
+                                        personName,
+                                        similarity != null ? similarity : 0.0,
+                                        confidence,
+                                        "UPLOAD",
+                                        "AI-Match-v2"
+                                )
+                        );
+                    }
                 }
             }
 
             return ResponseEntity.ok(aiResponse);
 
         } catch (Exception e) {
+
+            e.printStackTrace(); // 🔥 IMPORTANT FOR DEBUG
+
             return ResponseEntity.internalServerError().body(
-                    Map.of("status", "ERROR", "message", "Match failed")
+                    Map.of(
+                            "status", "ERROR",
+                            "message", e.getMessage()
+                    )
             );
         }
     }
 
-    // 🔥 SIMPLE CONFIDENCE MAPPING
+    // 🔥 CONFIDENCE MAPPING
     private ConfidenceLevel mapConfidence(Double similarity) {
 
         if (similarity == null) return ConfidenceLevel.LOW;

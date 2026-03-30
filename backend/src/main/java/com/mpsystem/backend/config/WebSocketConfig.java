@@ -21,11 +21,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         config.enableSimpleBroker("/topic")
                 .setTaskScheduler(te)
                 .setHeartbeatValue(new long[] { 4000, 4000 });
+
         config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws-alerts").setAllowedOriginPatterns("*").withSockJS();
+
+        // 🔥 FIX: REMOVE withSockJS()
+        registry.addEndpoint("/ws-alerts")
+                .setAllowedOriginPatterns("*");
     }
 }

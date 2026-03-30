@@ -14,8 +14,15 @@ class WebSocketService {
         this.pendingSubscriptions = {};
         this._connected = false;
         this._connecting = false;
+
+        // 🔥 for listeners
+        this._listeners = new Map();
+        this._listenerId = 0;
     }
 
+    // =========================================================
+    // 🔥 CONNECT
+    // =========================================================
     connect() {
         if (this.client?.active || this._connecting) return;
 
@@ -34,6 +41,8 @@ class WebSocketService {
                 this._connecting = false;
                 this._connected = true;
 
+                this._notifyListeners(true);
+
                 Object.entries(this.pendingSubscriptions).forEach(([topic, cb]) => {
                     this._subscribeNow(topic, cb);
                 });
@@ -47,12 +56,44 @@ class WebSocketService {
                 console.warn('[WS] Disconnected');
                 this._connected = false;
                 this.subscriptions = {};
+                this._notifyListeners(false);
+            },
+
+            onWebSocketError: () => {
+                this._connected = false;
+                this._notifyListeners(false);
             }
         });
 
         this.client.activate();
     }
 
+    // =========================================================
+    // 🔥 LISTENER SYSTEM (FIX FOR YOUR ERROR)
+    // =========================================================
+    setConnectionListener(callback) {
+        if (!callback) return;
+
+        const id = `listener_${++this._listenerId}`;
+        this._listeners.set(id, callback);
+
+        // send current state immediately
+        try {
+            callback(this._connected);
+        } catch {}
+
+        return () => this._listeners.delete(id);
+    }
+
+    _notifyListeners(state) {
+        this._listeners.forEach(cb => {
+            try { cb(state); } catch {}
+        });
+    }
+
+    // =========================================================
+    // 🔥 SUBSCRIBE
+    // =========================================================
     _subscribeNow(topic, callback) {
         if (!this.client?.connected) return;
 
@@ -77,21 +118,29 @@ class WebSocketService {
         this.pendingSubscriptions[topic] = callback;
 
         if (!this.client) {
-            this.connect(); // 🔥 AUTO CONNECT
+            this.connect();
         }
 
         this._subscribeNow(topic, callback);
     }
 
+    // =========================================================
+    // 🔥 UNSUBSCRIBE
+    // =========================================================
     unsubscribe(topic) {
         delete this.pendingSubscriptions[topic];
 
         if (this.subscriptions[topic]) {
-            this.subscriptions[topic].unsubscribe();
+            try {
+                this.subscriptions[topic].unsubscribe();
+            } catch {}
             delete this.subscriptions[topic];
         }
     }
 
+    // =========================================================
+    // 🔥 DISCONNECT
+    // =========================================================
     disconnect() {
         if (this.client) {
             this.client.deactivate();
@@ -102,6 +151,8 @@ class WebSocketService {
         this.pendingSubscriptions = {};
         this._connected = false;
         this._connecting = false;
+
+        this._notifyListeners(false);
     }
 }
 

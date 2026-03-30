@@ -3,6 +3,7 @@ package com.mpsystem.backend.controller;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +15,7 @@ import com.mpsystem.backend.repository.AlertRepository;
 import com.mpsystem.backend.service.AIClientService;
 
 @RestController
-@RequestMapping("/api/match")
+@RequestMapping("/api/forensic")
 @CrossOrigin(origins = "*")
 public class FaceMatchController {
 
@@ -27,93 +28,88 @@ public class FaceMatchController {
         this.alertRepository = alertRepository;
     }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/match-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> matchFace(
             @RequestParam("file") MultipartFile file) {
 
         try {
 
+            // ✅ VALIDATION
             if (file == null || file.isEmpty()) {
                 return ResponseEntity.badRequest().body(
-                        Map.of("status", "ERROR", "message", "Image file is empty")
+                        Map.of("error", "Image file is empty")
                 );
             }
 
-            // 🔥 CALL AI
+            // 🔥 CALL AI ENGINE
             Map<String, Object> aiResponse = aiClientService.matchFace(file);
 
+            // 🔴 SAFETY CHECK
             if (aiResponse == null) {
-                return ResponseEntity.internalServerError().body(
-                        Map.of("status", "ERROR", "message", "Empty AI response")
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                        Map.of("error", "AI returned null response")
                 );
             }
 
-            // 🔥 SAFE READ
-            String status = aiResponse.get("status") != null
-                    ? aiResponse.get("status").toString()
-                    : "UNKNOWN";
+            // 🔥 DEBUG LOG (VERY IMPORTANT)
+            System.out.println("🔥 AI RESPONSE: " + aiResponse);
 
-            Double similarity = null;
+            // 🔥 SAFE EXTRACTION
+            String personId = aiResponse.get("personId") != null
+                    ? aiResponse.get("personId").toString()
+                    : null;
+
+            String personName = aiResponse.get("personName") != null
+                    ? aiResponse.get("personName").toString()
+                    : "Unknown";
+
+            Double similarity = 0.0;
             if (aiResponse.get("similarity") instanceof Number) {
                 similarity = ((Number) aiResponse.get("similarity")).doubleValue();
             }
 
-            // 🔥 NO FACE
-            if ("NO_FACE".equalsIgnoreCase(status)) {
-                return ResponseEntity.ok(aiResponse);
-            }
+            // 🔥 SAVE ALERT (ONLY IF VALID MATCH DATA EXISTS)
+            if (personId != null && similarity > 0) {
 
-            // 🔥 MATCH
-            if ("CONFIDENT_MATCH".equalsIgnoreCase(status)) {
+                ConfidenceLevel confidence = mapConfidence(similarity);
 
-                String personId = aiResponse.get("personId") != null
-                        ? aiResponse.get("personId").toString()
-                        : null;
+                LocalDateTime tenMinutesAgo = LocalDateTime.now().minusMinutes(10);
 
-                String personName = aiResponse.get("personName") != null
-                        ? aiResponse.get("personName").toString()
-                        : "Unknown";
+                boolean exists = alertRepository
+                        .existsByPersonIdAndDetectedAtAfter(personId, tenMinutesAgo);
 
-                if (personId != null) {
-
-                    ConfidenceLevel confidence = mapConfidence(similarity);
-
-                    LocalDateTime tenMinutesAgo = LocalDateTime.now().minusMinutes(10);
-
-                    boolean alertExists = alertRepository
-                            .existsByPersonIdAndDetectedAtAfter(personId, tenMinutesAgo);
-
-                    if (!alertExists) {
-                        alertRepository.save(
-                                new Alert(
-                                        personId,
-                                        personName,
-                                        similarity != null ? similarity : 0.0,
-                                        confidence,
-                                        "UPLOAD",
-                                        "AI-Match-v2"
-                                )
-                        );
-                    }
+                if (!exists) {
+                    alertRepository.save(
+                            new Alert(
+                                    personId,
+                                    personName,
+                                    similarity,
+                                    confidence,
+                                    "UPLOAD",
+                                    "AI-Match-vFinal"
+                            )
+                    );
                 }
             }
 
+            // ✅ RETURN AI RESPONSE DIRECTLY
             return ResponseEntity.ok(aiResponse);
 
         } catch (Exception e) {
 
-            e.printStackTrace(); // 🔥 IMPORTANT FOR DEBUG
+            // 🔥 PRINT REAL ERROR IN LOGS
+            e.printStackTrace();
 
-            return ResponseEntity.internalServerError().body(
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     Map.of(
-                            "status", "ERROR",
+                            "error", "Match failed",
                             "message", e.getMessage()
                     )
             );
         }
     }
 
-    // 🔥 CONFIDENCE MAPPING
+    // 🔥 CONFIDENCE LOGIC
     private ConfidenceLevel mapConfidence(Double similarity) {
 
         if (similarity == null) return ConfidenceLevel.LOW;

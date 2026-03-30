@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /**
- * MPIS Authentication Filter
+ * 🔐 MPIS Authentication Filter (FINAL CLEAN VERSION)
  */
 @Component
 public class AuthFilter implements Filter {
@@ -43,7 +43,7 @@ public class AuthFilter implements Filter {
             return;
         }
 
-        // ✅ PUBLIC ENDPOINTS (NO TOKEN REQUIRED)
+        // ✅ PUBLIC ENDPOINTS
         if (isPublicEndpoint(path)) {
             chain.doFilter(request, response);
             return;
@@ -53,14 +53,14 @@ public class AuthFilter implements Filter {
         String token = extractToken(req);
 
         if (token == null || token.isEmpty()) {
-            log.warn("Missing authentication token for: {} {}", method, path);
+            log.warn("🚫 Missing token → {} {}", method, path);
             sendUnauthorized(res, "Unauthorized: Missing Token");
             return;
         }
 
         // 🔒 Validate token
         if (!jwtUtil.validateToken(token)) {
-            log.warn("Invalid or expired token for: {} {}", method, path);
+            log.warn("🚫 Invalid/Expired token → {} {}", method, path);
             sendUnauthorized(res, "Unauthorized: Invalid or Expired Token");
             return;
         }
@@ -69,24 +69,28 @@ public class AuthFilter implements Filter {
     }
 
     /**
-     * ✅ FIXED: Public endpoints (LOGIN MUST BE HERE)
+     * ✅ FINAL PUBLIC ENDPOINT LIST
      */
-   private boolean isPublicEndpoint(String path) {
-    return path.startsWith("/api/auth") ||
-           path.startsWith("/auth") ||
-           path.startsWith("/api/system") ||   // 🔥 ADD THIS (YOUR FIX)
-           path.startsWith("/api/persons") ||
-           path.startsWith("/api/realtime") ||
-           path.startsWith("/api/cameras") ||
-           path.startsWith("/api/alerts") ||
-           path.startsWith("/api/match") ||
-           path.startsWith("/uploads/") ||
-           path.startsWith("/actuator") ||
-           path.startsWith("/health") ||
-           path.startsWith("/ws-alerts");
-}
+    private boolean isPublicEndpoint(String path) {
+        return path.startsWith("/api/auth") ||
+               path.startsWith("/auth") ||
+               path.startsWith("/api/system") ||
+               path.startsWith("/api/persons") ||
+               path.startsWith("/api/realtime") ||
+               path.startsWith("/api/cameras") ||
+               path.startsWith("/api/alerts") ||
+
+               // 🔥 CRITICAL FIX (YOUR MATCH ENDPOINT)
+               path.startsWith("/api/forensic") ||
+
+               path.startsWith("/api/match") || // optional legacy
+               path.startsWith("/actuator") ||
+               path.startsWith("/health") ||
+               path.startsWith("/ws-alerts");
+    }
+
     /**
-     * Extract JWT token
+     * 🔐 Extract JWT token
      */
     private String extractToken(HttpServletRequest req) {
         String authHeader = req.getHeader("Authorization");
@@ -95,7 +99,7 @@ public class AuthFilter implements Filter {
             return authHeader.substring(BEARER_PREFIX.length());
         }
 
-        // fallback (legacy)
+        // 🔁 fallback (legacy support)
         String legacyToken = req.getHeader("X-SESSION-TOKEN");
         if (legacyToken != null && !legacyToken.isEmpty()) {
             return legacyToken;
@@ -105,7 +109,7 @@ public class AuthFilter implements Filter {
     }
 
     /**
-     * Send unauthorized response
+     * 🚫 Send unauthorized response
      */
     private void sendUnauthorized(HttpServletResponse res, String message) throws IOException {
         res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

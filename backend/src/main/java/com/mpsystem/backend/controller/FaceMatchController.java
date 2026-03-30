@@ -14,9 +14,12 @@ import com.mpsystem.backend.model.ConfidenceLevel;
 import com.mpsystem.backend.repository.AlertRepository;
 import com.mpsystem.backend.service.AIClientService;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestController
 @RequestMapping("/api/forensic")
 @CrossOrigin(origins = "*")
+@Slf4j
 public class FaceMatchController {
 
     private final AIClientService aiClientService;
@@ -37,39 +40,44 @@ public class FaceMatchController {
             // ✅ VALIDATION
             if (file == null || file.isEmpty()) {
                 return ResponseEntity.badRequest().body(
-                        Map.of("error", "Image file is empty")
+                        Map.of("status", "ERROR", "message", "Image file is empty")
                 );
             }
 
             // 🔥 CALL AI ENGINE
             Map<String, Object> aiResponse = aiClientService.matchFace(file);
 
-            // 🔴 SAFETY CHECK
+            // 🔥 LOG RESPONSE (IMPORTANT)
+            log.info("🔥 AI RESPONSE: {}", aiResponse);
+
             if (aiResponse == null) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                        Map.of("error", "AI returned null response")
+                return ResponseEntity.ok(
+                        Map.of("status", "ERROR", "message", "AI returned null")
                 );
             }
 
-            // 🔥 DEBUG LOG (VERY IMPORTANT)
-            System.out.println("🔥 AI RESPONSE: " + aiResponse);
+            String status = String.valueOf(aiResponse.get("status"));
 
-            // 🔥 SAFE EXTRACTION
-            String personId = aiResponse.get("personId") != null
-                    ? aiResponse.get("personId").toString()
-                    : null;
-
-            String personName = aiResponse.get("personName") != null
-                    ? aiResponse.get("personName").toString()
-                    : "Unknown";
-
-            Double similarity = 0.0;
-            if (aiResponse.get("similarity") instanceof Number) {
-                similarity = ((Number) aiResponse.get("similarity")).doubleValue();
+            // 🔴 HANDLE NO FACE
+            if ("NO_FACE".equals(status)) {
+                return ResponseEntity.ok(aiResponse);
             }
 
-            // 🔥 SAVE ALERT (ONLY IF VALID MATCH DATA EXISTS)
-            if (personId != null && similarity > 0) {
+            // 🔴 HANDLE NO MATCH
+            if ("NO_MATCH".equals(status)) {
+                return ResponseEntity.ok(aiResponse);
+            }
+
+            // 🔴 HANDLE MATCH
+            if ("CONFIDENT_MATCH".equals(status)) {
+
+                String personId = String.valueOf(aiResponse.get("personId"));
+                String personName = String.valueOf(aiResponse.get("personName"));
+
+                Double similarity = 0.0;
+                if (aiResponse.get("similarity") instanceof Number) {
+                    similarity = ((Number) aiResponse.get("similarity")).doubleValue();
+                }
 
                 ConfidenceLevel confidence = mapConfidence(similarity);
 
@@ -92,24 +100,22 @@ public class FaceMatchController {
                 }
             }
 
-            // ✅ RETURN AI RESPONSE DIRECTLY
+            // ✅ ALWAYS RETURN AI RESPONSE
             return ResponseEntity.ok(aiResponse);
 
         } catch (Exception e) {
 
-            // 🔥 PRINT REAL ERROR IN LOGS
-            e.printStackTrace();
+            log.error("❌ MATCH FAILED", e);
 
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+            return ResponseEntity.ok(
                     Map.of(
-                            "error", "Match failed",
-                            "message", e.getMessage()
+                            "status", "ERROR",
+                            "message", "Match failed: " + e.getMessage()
                     )
             );
         }
     }
 
-    // 🔥 CONFIDENCE LOGIC
     private ConfidenceLevel mapConfidence(Double similarity) {
 
         if (similarity == null) return ConfidenceLevel.LOW;

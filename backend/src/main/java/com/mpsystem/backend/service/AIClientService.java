@@ -27,7 +27,7 @@ public class AIClientService {
     }
 
     // =========================================================
-    // 🔥 MATCH (FORENSIC SEARCH)
+    // 🔥 MATCH (NO CRASH VERSION)
     // =========================================================
     @SuppressWarnings("unchecked")
     public Map<String, Object> matchFace(MultipartFile file) {
@@ -45,7 +45,7 @@ public class AIClientService {
             };
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("file", resource); // 🔥 MUST BE "file"
+            body.add("file", resource);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -56,34 +56,51 @@ public class AIClientService {
             ResponseEntity<Map> response =
                     restTemplate.postForEntity(url, request, Map.class);
 
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new RuntimeException("AI Engine returned non-200");
-            }
-
             Map<String, Object> responseBody = response.getBody();
 
-            // 🔥 FIX 1: handle empty response
+            // 🔥 LOG EVERYTHING
+            log.info("🔥 AI RAW RESPONSE: {}", responseBody);
+
             if (responseBody == null) {
-                throw new RuntimeException("Empty AI response");
+                return Map.of(
+                        "status", "ERROR",
+                        "message", "Empty AI response"
+                );
             }
 
-            // 🔥 FIX 2: handle AI errors
+            // 🔥 HANDLE AI ERROR RESPONSE
             if (responseBody.containsKey("error")) {
-                throw new RuntimeException("AI Error: " + responseBody.get("error"));
+                return Map.of(
+                        "status", "ERROR",
+                        "message", String.valueOf(responseBody.get("error")),
+                        "raw", responseBody
+                );
             }
 
-            log.info("✅ AI MATCH Response: {}", responseBody);
+            // 🔥 ENSURE STATUS EXISTS
+            if (!responseBody.containsKey("status")) {
+                return Map.of(
+                        "status", "ERROR",
+                        "message", "Invalid AI response",
+                        "raw", responseBody
+                );
+            }
 
             return responseBody;
 
         } catch (Exception e) {
-            log.error("❌ AI MATCH failed", e);
-            throw new RuntimeException("Failed to call AI Engine: " + e.getMessage(), e);
+
+            log.error("❌ AI MATCH FAILED", e);
+
+            return Map.of(
+                    "status", "ERROR",
+                    "message", "AI Engine failed: " + e.getMessage()
+            );
         }
     }
 
     // =========================================================
-    // 🔥 EMBEDDING (UPLOAD / REGISTRATION)
+    // 🔥 EMBEDDING (NO CRASH VERSION)
     // =========================================================
     @SuppressWarnings("unchecked")
     public List<Double> extractEmbedding(MultipartFile file) {
@@ -101,7 +118,7 @@ public class AIClientService {
             };
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("file", resource); // 🔥 MUST BE "file"
+            body.add("file", resource);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -112,34 +129,22 @@ public class AIClientService {
             ResponseEntity<Map> response =
                     restTemplate.postForEntity(url, request, Map.class);
 
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new RuntimeException("AI Engine returned non-200");
-            }
-
             Map<String, Object> responseBody = response.getBody();
 
+            log.info("🔥 AI EMBEDDING RESPONSE: {}", responseBody);
+
             if (responseBody == null || !responseBody.containsKey("embedding")) {
-                throw new RuntimeException("Invalid embedding response: " + responseBody);
+                throw new RuntimeException("Invalid embedding response");
             }
 
-            List<Double> embedding = (List<Double>) responseBody.get("embedding");
-
-            if (embedding == null || embedding.size() != 512) {
-                throw new RuntimeException("Invalid embedding size");
-            }
-
-            log.info("✅ Embedding extracted successfully");
-
-            return embedding;
+            return (List<Double>) responseBody.get("embedding");
 
         } catch (Exception e) {
-            log.error("❌ AI EMBEDDING failed", e);
-            throw new RuntimeException("Embedding extraction failed: " + e.getMessage(), e);
+            log.error("❌ AI EMBEDDING FAILED", e);
+            throw new RuntimeException("Embedding extraction failed");
         }
     }
 
-    // =========================================================
-    // 🔥 SAFE FILENAME
     // =========================================================
     private String safeFilename(MultipartFile file) {
         String name = file.getOriginalFilename();

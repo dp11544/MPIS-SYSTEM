@@ -28,14 +28,14 @@ print("🔥 MPIS AI ENGINE STABLE MODE 🔥")
 # ---------------- Flask App ----------------
 app = Flask(__name__)
 
-# ✅ FORCE GLOBAL CORS (STRICT FIX)
+# ✅ GLOBAL CORS
 CORS(
     app,
     resources={r"/*": {"origins": "*"}},
     supports_credentials=True
 )
 
-# ✅ EXTRA SAFETY (IMPORTANT)
+# ✅ EXTRA SAFETY (CORS headers)
 @app.after_request
 def apply_cors(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
@@ -80,13 +80,22 @@ def get_matcher_safe():
 
 
 # ---------------- Register Routes ----------------
+# 🔥 FIXED (REMOVED EXTRA ARGUMENT)
 api_server.register_routes(
     app,
     get_engine_safe,
     get_db_loader_safe,
-    get_matcher_safe,
-    None
+    get_matcher_safe
 )
+
+
+# ---------------- Health Check (OPTIONAL BUT USEFUL) ----------------
+@app.route("/health", methods=["GET"])
+def health():
+    return {
+        "status": "ok",
+        "service": "mpis-ai-engine",
+    }, 200
 
 
 # ---------------- LOCAL RUN ----------------

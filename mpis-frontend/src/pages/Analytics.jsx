@@ -145,6 +145,31 @@ const Analytics = () => {
         return dateRangeOptions.find(opt => opt.value === dateRange)?.label || 'Last 7 Days';
     };
 
+    const getFullTimeline = () => {
+        const { startDate, endDate } = getDateRangeParams();
+        if (!startDate || !endDate) return metrics.timeline;
+        
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const filled = [];
+        
+        const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysDiff > 366 || daysDiff < 0) return metrics.timeline;
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            const existing = metrics.timeline.find(t => t.date === dateStr || t.label === label);
+            filled.push({
+                label: label,
+                count: existing ? existing.count : 0
+            });
+        }
+        
+        return filled.length > 0 ? filled : metrics.timeline;
+    };
+
     // PDF Export function
     const exportToPDF = async () => {
         setIsExporting(true);
@@ -233,10 +258,11 @@ const Analytics = () => {
             {/* Subtle glow behind icon */}
             <div style={{ 
                 position: 'absolute', 
-                top: '-20px', left: '-20px', 
-                width: '100px', height: '100px', 
-                background: `radial-gradient(circle, rgba(${color}, 0.15) 0%, transparent 70%)`,
-                borderRadius: '50%', zIndex: 0 
+                top: '50%', left: '26px', 
+                width: '60px', height: '60px', 
+                background: `radial-gradient(circle, rgba(${color}, 0.25) 0%, transparent 80%)`,
+                borderRadius: '50%', zIndex: 0,
+                transform: 'translateY(-50%)'
             }}></div>
             
             <div style={{ 
@@ -536,106 +562,85 @@ const Analytics = () => {
                             </div>
                         </div>
 
-                        <div style={{ flex: 1, position: 'relative', minHeight: '280px', marginTop: '10px', zIndex: 1 }}>
+                        <div style={{ flex: 1, position: 'relative', minHeight: '300px', marginTop: '10px', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
                             {isLoading ? (
-                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <div style={{ width: '40px', height: '40px', border: '3px solid rgba(56, 189, 248, 0.1)', borderTopColor: '#38bdf8', borderRadius: '50%', animation: 'spin 1s ease-in-out infinite' }}></div>
                                 </div>
-                            ) : metrics.timeline.length === 0 ? (
-                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>
+                            ) : getFullTimeline().length === 0 ? (
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>
                                     <div style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '50%', marginBottom: '15px' }}>
                                         <LineChart size={36} color="#475569" />
                                     </div>
                                     <p style={{ color: '#94a3b8', fontWeight: '600', letterSpacing: '1px', fontSize: '0.9rem', margin: 0 }}>NO ANALYTICS FOR SELECTED DATES</p>
                                 </div>
                             ) : (
-                                <svg width="100%" height="100%" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-                                    <defs>
-                                        <linearGradient id="premiumBarGradient" x1="0" y1="1" x2="0" y2="0">
-                                            <stop offset="0%" stopColor="rgba(56, 189, 248, 0.2)" />
-                                            <stop offset="100%" stopColor="rgba(56, 189, 248, 1)" />
-                                        </linearGradient>
-                                        <filter id="softGlow">
-                                            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-                                            <feMerge>
-                                                <feMergeNode in="coloredBlur"/>
-                                                <feMergeNode in="SourceGraphic"/>
-                                            </feMerge>
-                                        </filter>
-                                    </defs>
+                                <div style={{ display: 'flex', height: '100%', position: 'relative' }}>
                                     
-                                    {/* Subdued Grid */}
-                                    {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
-                                        <g key={`grid-${i}`}>
-                                            <line x1="0" y1={`${ratio * 85}%`} x2="100%" y2={`${ratio * 85}%`} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                                            {ratio !== 1 && (
-                                                <text x="0" y={`${ratio * 85}%`} dy="-6" fill="#64748b" fontSize="10" fontWeight="600" fontFamily="var(--font-mono, monospace)">
-                                                    {Math.round(Math.max(...metrics.timeline.map(d => d.count)) * (1 - ratio))}
-                                                </text>
-                                            )}
-                                        </g>
-                                    ))}
+                                    {/* Y-Axis Grid Lines */}
+                                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '30px', display: 'flex', flexDirection: 'column-reverse', justifyContent: 'space-between', zIndex: 0, pointerEvents: 'none' }}>
+                                        {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
+                                            const maxVal = Math.max(...getFullTimeline().map(d => d.count), 1);
+                                            const labelVal = Math.round(maxVal * ratio);
+                                            return (
+                                                <div key={`grid-${i}`} style={{ width: '100%', borderBottom: '1px solid rgba(255,255,255,0.03)', position: 'relative' }}>
+                                                    <span style={{ position: 'absolute', bottom: '2px', left: '0', color: '#64748b', fontSize: '10px', fontWeight: '600', fontFamily: 'var(--font-mono, monospace)' }}>
+                                                        {labelVal}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
 
-                                    {/* Floating Bars */}
-                                    {metrics.timeline.map((item, i) => {
-                                        const maxVal = Math.max(...metrics.timeline.map(d => d.count), 1);
-                                        const count = item.count;
-                                        const heightPercent = count === 0 ? 0 : (count / maxVal) * 85;
-                                        const gap = metrics.timeline.length > 30 ? 2 : (metrics.timeline.length > 15 ? 6 : 16);
-                                        const barWidth = `calc((100% - ${(metrics.timeline.length - 1) * gap}px) / ${metrics.timeline.length})`;
-                                        
-                                        return (
-                                            <g key={`bar-${i}`} transform={`translate(0, 0)`} style={{ transition: 'all 0.3s' }}>
-                                                {/* Hover capture box */}
-                                                <rect 
-                                                    x={`calc(${i} * (${barWidth} + ${gap}px))`} 
-                                                    y="0" 
-                                                    width={barWidth} 
-                                                    height="85%" 
-                                                    fill="transparent" 
-                                                />
-                                                {count > 0 && (
-                                                    <rect 
-                                                        x={`calc(${i} * (${barWidth} + ${gap}px) + 2px)`} 
-                                                        y={`${85 - heightPercent}%`} 
-                                                        width={`calc(${barWidth} - 4px)`} 
-                                                        height={`${heightPercent}%`} 
-                                                        fill="url(#premiumBarGradient)" 
-                                                        rx="4" 
-                                                        ry="4"
-                                                        filter="url(#softGlow)"
-                                                        style={{ transition: 'height 1s cubic-bezier(0.16, 1, 0.3, 1), y 1s cubic-bezier(0.16, 1, 0.3, 1)' }}
-                                                    />
-                                                )}
-                                                {count > 0 && (
-                                                    <text 
-                                                        x={`calc(${i} * (${barWidth} + ${gap}px) + (${barWidth} / 2))`} 
-                                                        y={`${85 - heightPercent}%`} 
-                                                        dy="-10" 
-                                                        textAnchor="middle" 
-                                                        fill="#ffffff" 
-                                                        fontSize="11" 
-                                                        fontFamily="var(--font-mono, monospace)" 
-                                                        fontWeight="bold"
-                                                    >
-                                                        {count}
-                                                    </text>
-                                                )}
-                                                <text 
-                                                    x={`calc(${i} * (${barWidth} + ${gap}px) + (${barWidth} / 2))`} 
-                                                    y="95%" 
-                                                    textAnchor="middle" 
-                                                    fill="#94a3b8" 
-                                                    fontSize="10" 
-                                                    fontWeight="600"
-                                                    transform={metrics.timeline.length > 15 ? `rotate(-45, calc(${i} * (${barWidth} + ${gap}px) + (${barWidth} / 2)), 95%)` : ""}
-                                                >
-                                                    {metrics.timeline.length > 30 && i % 2 !== 0 ? '' : item.label}
-                                                </text>
-                                            </g>
-                                        );
-                                    })}
-                                </svg>
+                                    {/* Bars Container */}
+                                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flex: 1, paddingLeft: '24px', position: 'relative', zIndex: 1, paddingBottom: '30px', gap: getFullTimeline().length > 30 ? '2px' : '8px' }}>
+                                        {getFullTimeline().map((item, i) => {
+                                            const fullTimelineData = getFullTimeline();
+                                            const maxVal = Math.max(...fullTimelineData.map(d => d.count), 1);
+                                            const count = item.count;
+                                            const heightPercent = count === 0 ? 2 : (count / maxVal) * 100; // Give 2% min height so it's not totally empty
+                                            const showLabel = fullTimelineData.length <= 15 || (i % Math.ceil(fullTimelineData.length / 10) === 0);
+                                            
+                                            return (
+                                                <div key={`bar-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', flex: 1, position: 'relative', justifyContent: 'flex-end', group: 'bar-container' }}>
+                                                    {/* The bar */}
+                                                    <div style={{
+                                                        width: '100%',
+                                                        height: `${heightPercent}%`,
+                                                        background: count > 0 ? 'linear-gradient(180deg, rgba(56, 189, 248, 1) 0%, rgba(56, 189, 248, 0.2) 100%)' : 'rgba(255,255,255,0.03)',
+                                                        borderRadius: '4px 4px 0 0',
+                                                        position: 'relative',
+                                                        transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+                                                        boxShadow: count > 0 ? '0 0 15px rgba(56, 189, 248, 0.5)' : 'none',
+                                                        border: count > 0 ? '1px solid rgba(56, 189, 248, 0.8)' : '1px dashed rgba(255,255,255,0.05)',
+                                                        borderBottom: 'none'
+                                                    }}>
+                                                        {count > 0 && (
+                                                            <div style={{ position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', color: '#ffffff', fontSize: '11px', fontFamily: 'var(--font-mono, monospace)', fontWeight: 'bold' }}>
+                                                                {count}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {/* X-Axis Label */}
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        bottom: '-25px',
+                                                        left: '50%',
+                                                        transform: fullTimelineData.length > 15 ? 'translateX(-50%) rotate(-45deg)' : 'translateX(-50%)',
+                                                        color: '#94a3b8',
+                                                        fontSize: '10px',
+                                                        fontWeight: '600',
+                                                        whiteSpace: 'nowrap',
+                                                        opacity: showLabel ? 1 : 0
+                                                    }}>
+                                                        {item.label}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             )}
                         </div>
                     </div>

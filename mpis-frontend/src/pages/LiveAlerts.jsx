@@ -36,105 +36,105 @@ const LiveAlerts = () => {
     // =========================================================
     let isProcessing = false;
 
-useEffect(() => {
-    const interval = setInterval(async () => {
-        if (isProcessing) return;
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            if (isProcessing) return;
 
-        isProcessing = true;
-        await captureAndMatch();
-        isProcessing = false;
+            isProcessing = true;
+            await captureAndMatch();
+            isProcessing = false;
 
-    }, 2000);
+        }, 2000);
 
-    return () => clearInterval(interval);
-}, []);
+        return () => clearInterval(interval);
+    }, []);
 
     const captureAndMatch = async () => {
-    if (!videoRef.current || videoRef.current.videoWidth === 0) return;
+        if (!videoRef.current || videoRef.current.videoWidth === 0) return;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
+        const canvas = document.createElement("canvas");
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
 
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(videoRef.current, 0, 0);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(videoRef.current, 0, 0);
 
-    canvas.toBlob(async (blob) => {
-        if (!blob) return;
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
 
-        const formData = new FormData();
-        formData.append("file", blob, "frame.jpg");
+            const formData = new FormData();
+            formData.append("file", blob, "frame.jpg");
 
-        try {
-            const res = await api.post("/forensic/match-image", formData);
+            try {
+                const res = await api.post("/forensic/match-image", formData);
 
-            const data = res.data;
+                const data = res.data;
 
-            if (!data || !data.status) {
-                console.warn("⚠️ Invalid response:", data);
-                return;
+                if (!data || !data.status) {
+                    console.warn("⚠️ Invalid response:", data);
+                    return;
+                }
+
+                if (data.status === "CONFIDENT_MATCH") {
+                    console.log("✅ MATCH FOUND:", data);
+
+                    // 🔥 PUSH TO BACKEND SO IT CREATES AN ALERT + BROADCASTS IT
+                    api.post('/alerts', {
+                        personId: data.personId || "UNKNOWN",
+                        personName: data.personName || "Unknown Match",
+                        similarityScore: data.similarity || 0.90,
+                        cameraId: "WEB_FRONTEND"
+                    }).catch(err => console.error("Failed to ingest alert:", err));
+
+                } else {
+                    console.log("ℹ️ STATUS:", data.status);
+                }
+
+            } catch (err) {
+                console.error("❌ REAL ERROR:", err);
             }
 
-            if (data.status === "CONFIDENT_MATCH") {
-                console.log("✅ MATCH FOUND:", data);
-                
-                // 🔥 PUSH TO BACKEND SO IT CREATES AN ALERT + BROADCASTS IT
-                api.post('/alerts', {
-                    personId: data.personId || "UNKNOWN",
-                    personName: data.personName || "Unknown Match",
-                    similarityScore: data.similarity || 0.90,
-                    cameraId: "WEB_FRONTEND"
-                }).catch(err => console.error("Failed to ingest alert:", err));
+        }, "image/jpeg");
+    };
 
-            } else {
-                console.log("ℹ️ STATUS:", data.status);
+    useEffect(() => {
+
+        let isMounted = true;
+
+        const fetchLatest = async () => {
+            try {
+                const res = await api.get('/alerts/latest');
+                if (isMounted && res.data) {
+                    setLiveFeed(res.data.slice(0, 10));
+                }
+            } catch (err) {
+                console.error("Initial alerts fetch failed", err);
             }
+        };
 
-        } catch (err) {
-            console.error("❌ REAL ERROR:", err);
-        }
+        fetchLatest();
 
-    }, "image/jpeg");
-};
+        const handleNewAlert = (alert) => {
+            if (!isMounted) return;
 
-        useEffect(() => {
+            setLiveFeed(prev => [alert, ...prev].slice(0, 50));
+            setNewAlertTrigger(true);
 
-    let isMounted = true;
+            setTimeout(() => setNewAlertTrigger(false), 3000);
 
-    const fetchLatest = async () => {
-        try {
-            const res = await api.get('/alerts/latest');
-            if (isMounted && res.data) {
-                setLiveFeed(res.data.slice(0, 10));
+            if (feedRef.current) {
+                feedRef.current.scrollTop = 0;
             }
-        } catch (err) {
-            console.error("Initial alerts fetch failed", err);
-        }
-    };
+        };
 
-    fetchLatest();
+        webSocketService.subscribe('/topic/alerts', handleNewAlert);
 
-    const handleNewAlert = (alert) => {
-        if (!isMounted) return;
+        return () => {
+            isMounted = false;
+            webSocketService.unsubscribe('/topic/alerts');
+        };
 
-        setLiveFeed(prev => [alert, ...prev].slice(0, 50));
-        setNewAlertTrigger(true);
-
-        setTimeout(() => setNewAlertTrigger(false), 3000);
-
-        if (feedRef.current) {
-            feedRef.current.scrollTop = 0;
-        }
-    };
-
-    webSocketService.subscribe('/topic/alerts', handleNewAlert);
-
-    return () => {
-        isMounted = false;
-        webSocketService.unsubscribe('/topic/alerts');
-    };
-
-}, []);
+    }, []);
     // =========================================================
     // SIMULATION
     // =========================================================
@@ -200,11 +200,11 @@ useEffect(() => {
                         background: '#000',
                         position: 'relative'
                     }}>
-                        <div style={{ 
-                            position: 'absolute', top: '10px', left: '10px', 
-                            background: 'rgba(255,77,77,0.8)', color: 'white', 
-                            padding: '4px 10px', borderRadius: '6px', 
-                            fontSize: '0.7rem', fontWeight: 'bold', zIndex: 10, 
+                        <div style={{
+                            position: 'absolute', top: '10px', left: '10px',
+                            background: 'rgba(255,77,77,0.8)', color: 'white',
+                            padding: '4px 10px', borderRadius: '6px',
+                            fontSize: '0.7rem', fontWeight: 'bold', zIndex: 10,
                             display: 'flex', alignItems: 'center', gap: '6px',
                             boxShadow: '0 0 10px rgba(255,77,77,0.5)'
                         }}>
@@ -231,11 +231,11 @@ useEffect(() => {
                         justifyContent: 'center',
                         alignItems: 'center'
                     }}>
-                        <div style={{ 
-                            position: 'absolute', top: '10px', left: '10px', 
-                            background: 'rgba(0,123,255,0.2)', border: '1px solid rgba(0,123,255,0.4)', 
-                            color: '#007bff', padding: '4px 10px', borderRadius: '6px', 
-                            fontSize: '0.7rem', fontWeight: 'bold' 
+                        <div style={{
+                            position: 'absolute', top: '10px', left: '10px',
+                            background: 'rgba(0,123,255,0.2)', border: '1px solid rgba(0,123,255,0.4)',
+                            color: '#007bff', padding: '4px 10px', borderRadius: '6px',
+                            fontSize: '0.7rem', fontWeight: 'bold'
                         }}>
                             CAM 02 (NODE 1)
                         </div>
@@ -256,11 +256,11 @@ useEffect(() => {
                         justifyContent: 'center',
                         alignItems: 'center'
                     }}>
-                        <div style={{ 
-                            position: 'absolute', top: '10px', left: '10px', 
-                            background: 'rgba(0,123,255,0.2)', border: '1px solid rgba(0,123,255,0.4)', 
-                            color: '#007bff', padding: '4px 10px', borderRadius: '6px', 
-                            fontSize: '0.7rem', fontWeight: 'bold' 
+                        <div style={{
+                            position: 'absolute', top: '10px', left: '10px',
+                            background: 'rgba(0,123,255,0.2)', border: '1px solid rgba(0,123,255,0.4)',
+                            color: '#007bff', padding: '4px 10px', borderRadius: '6px',
+                            fontSize: '0.7rem', fontWeight: 'bold'
                         }}>
                             CAM 03 (NODE 2)
                         </div>
@@ -281,11 +281,11 @@ useEffect(() => {
                         justifyContent: 'center',
                         alignItems: 'center'
                     }}>
-                        <div style={{ 
-                            position: 'absolute', top: '10px', left: '10px', 
-                            background: 'rgba(255,193,7,0.15)', border: '1px solid rgba(255,193,7,0.3)', 
-                            color: '#ffc107', padding: '4px 10px', borderRadius: '6px', 
-                            fontSize: '0.7rem', fontWeight: 'bold' 
+                        <div style={{
+                            position: 'absolute', top: '10px', left: '10px',
+                            background: 'rgba(255,193,7,0.15)', border: '1px solid rgba(255,193,7,0.3)',
+                            color: '#ffc107', padding: '4px 10px', borderRadius: '6px',
+                            fontSize: '0.7rem', fontWeight: 'bold'
                         }}>
                             CAM 04 (HQ LINK)
                         </div>

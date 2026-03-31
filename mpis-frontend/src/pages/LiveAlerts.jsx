@@ -183,19 +183,116 @@ useEffect(() => {
                 flex: 1
             }}>
 
-                {/* 🔥 CAMERA (FIXED) */}
+                {/* 🔥 CAMERAS GRID (4 SCREENS) */}
                 <div style={{
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    background: '#000'
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gridTemplateRows: '1fr 1fr',
+                    gap: '1rem',
+                    height: 'calc(100vh - 200px)', // Keeps it fitted within the screen
+                    minHeight: '400px'
                 }}>
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                    {/* CAM 1: Local Browser Feed */}
+                    <div style={{
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        background: '#000',
+                        position: 'relative'
+                    }}>
+                        <div style={{ 
+                            position: 'absolute', top: '10px', left: '10px', 
+                            background: 'rgba(255,77,77,0.8)', color: 'white', 
+                            padding: '4px 10px', borderRadius: '6px', 
+                            fontSize: '0.7rem', fontWeight: 'bold', zIndex: 10, 
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            boxShadow: '0 0 10px rgba(255,77,77,0.5)'
+                        }}>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white', animation: 'pulse 1.5s infinite' }}></div>
+                            CAM 01 (LOCAL WEB)
+                        </div>
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                    </div>
+
+                    {/* CAM 2: Remote Placeholder */}
+                    <div style={{
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        background: 'linear-gradient(135deg, #0a0a0a, #151515)',
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}>
+                        <div style={{ 
+                            position: 'absolute', top: '10px', left: '10px', 
+                            background: 'rgba(0,123,255,0.2)', border: '1px solid rgba(0,123,255,0.4)', 
+                            color: '#007bff', padding: '4px 10px', borderRadius: '6px', 
+                            fontSize: '0.7rem', fontWeight: 'bold' 
+                        }}>
+                            CAM 02 (NODE 1)
+                        </div>
+                        <VideoOff size={32} color="var(--text-secondary)" style={{ opacity: 0.3, marginBottom: '15px' }} />
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 'bold', letterSpacing: '1px' }}>AWAITING CONNECTION</span>
+                        <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.65rem', marginTop: '5px', fontFamily: 'monospace' }}>SIGNAL LOST / OFFLINE</span>
+                    </div>
+
+                    {/* CAM 3: Remote Placeholder */}
+                    <div style={{
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        background: 'linear-gradient(135deg, #0a0a0a, #151515)',
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}>
+                        <div style={{ 
+                            position: 'absolute', top: '10px', left: '10px', 
+                            background: 'rgba(0,123,255,0.2)', border: '1px solid rgba(0,123,255,0.4)', 
+                            color: '#007bff', padding: '4px 10px', borderRadius: '6px', 
+                            fontSize: '0.7rem', fontWeight: 'bold' 
+                        }}>
+                            CAM 03 (NODE 2)
+                        </div>
+                        <VideoOff size={32} color="var(--text-secondary)" style={{ opacity: 0.3, marginBottom: '15px' }} />
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 'bold', letterSpacing: '1px' }}>AWAITING CONNECTION</span>
+                        <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.65rem', marginTop: '5px', fontFamily: 'monospace' }}>SIGNAL LOST / OFFLINE</span>
+                    </div>
+
+                    {/* CAM 4: Remote Placeholder */}
+                    <div style={{
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        background: 'linear-gradient(135deg, #0a0a0a, #151515)',
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}>
+                        <div style={{ 
+                            position: 'absolute', top: '10px', left: '10px', 
+                            background: 'rgba(255,193,7,0.15)', border: '1px solid rgba(255,193,7,0.3)', 
+                            color: '#ffc107', padding: '4px 10px', borderRadius: '6px', 
+                            fontSize: '0.7rem', fontWeight: 'bold' 
+                        }}>
+                            CAM 04 (HQ LINK)
+                        </div>
+                        <VideoOff size={32} color="var(--text-secondary)" style={{ opacity: 0.3, marginBottom: '15px' }} />
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 'bold', letterSpacing: '1px' }}>AWAITING CONNECTION</span>
+                        <span style={{ color: 'rgba(255,193,7,0.3)', fontSize: '0.65rem', marginTop: '5px', fontFamily: 'monospace' }}>ENCRYPTED CHANNEL STANDBY</span>
+                    </div>
                 </div>
 
                 {/* ALERTS */}

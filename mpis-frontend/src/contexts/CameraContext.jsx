@@ -17,11 +17,12 @@ export const CameraProvider = ({ children }) => {
         video.autoplay = true;
         video.playsInline = true;
         video.muted = true;
-        video.style.position = 'absolute';
-        video.style.top = '-9999px';
-        video.style.visibility = 'hidden';
-        video.style.width = '1280px';
-        video.style.height = '720px';
+        video.style.position = 'fixed';
+        video.style.top = '0';
+        video.style.left = '0';
+        video.style.opacity = '0.001';
+        video.style.pointerEvents = 'none';
+        video.style.zIndex = '-9999';
         document.body.appendChild(video);
         videoRef.current = video;
 
@@ -41,6 +42,7 @@ export const CameraProvider = ({ children }) => {
             
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
+                videoRef.current.play().catch(e => console.error("Video play failed:", e));
             }
             setCameraStream(stream);
             setIsCameraActive(true);

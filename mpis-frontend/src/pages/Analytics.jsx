@@ -215,31 +215,51 @@ const Analytics = () => {
         }
     };
 
-    // Tactical Metric Card Component
+    // Premium Glassmorphic Metric Card
     const MetricCard = ({ title, value, unit, icon: Icon, color, loading }) => (
         <div style={{ 
-            background: '#0a0f18', 
-            border: '1px solid #1e293b', 
-            borderTop: `3px solid rgb(${color})`,
-            padding: '1.25rem', 
+            background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%)', 
+            border: '1px solid rgba(255, 255, 255, 0.05)', 
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px', 
+            padding: '1.5rem', 
             display: 'flex', 
             alignItems: 'center', 
-            gap: '15px',
-            position: 'relative'
+            gap: '1.25rem',
+            position: 'relative',
+            overflow: 'hidden',
+            boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)'
         }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, width: '20px', height: '20px', borderBottom: '1px solid #1e293b', borderLeft: '1px solid #1e293b' }}></div>
-            <div style={{ color: `rgb(${color})` }}>
-                <Icon size={24} />
+            {/* Subtle glow behind icon */}
+            <div style={{ 
+                position: 'absolute', 
+                top: '-20px', left: '-20px', 
+                width: '100px', height: '100px', 
+                background: `radial-gradient(circle, rgba(${color}, 0.15) 0%, transparent 70%)`,
+                borderRadius: '50%', zIndex: 0 
+            }}></div>
+            
+            <div style={{ 
+                background: `linear-gradient(135deg, rgba(${color}, 0.2) 0%, rgba(${color}, 0.05) 100%)`, 
+                border: `1px solid rgba(${color}, 0.2)`,
+                padding: '14px', 
+                borderRadius: '16px', 
+                color: `rgb(${color})`,
+                zIndex: 1,
+                boxShadow: `inset 0 2px 10px rgba(255,255,255,0.1), 0 5px 15px rgba(0,0,0,0.2)`
+            }}>
+                <Icon size={26} strokeWidth={2.5} />
             </div>
-            <div>
-                <p style={{ margin: 0, fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>{title}</p>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px', marginTop: '4px' }}>
+            
+            <div style={{ zIndex: 1, flex: 1 }}>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: '700' }}>{title}</p>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '6px' }}>
                     {loading ? (
-                        <div style={{ width: '60px', height: '1.5rem', background: '#1e293b', borderRadius: '2px', animation: 'pulse 1.5s infinite' }}></div>
+                        <div style={{ width: '80px', height: '2rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', animation: 'pulse 1.5s infinite' }}></div>
                     ) : (
                         <>
-                            <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#f8fafc', fontFamily: 'monospace' }}>{value}</h2>
-                            <span style={{ color: '#64748b', fontWeight: '600', fontSize: '0.7rem' }}>{unit}</span>
+                            <h2 style={{ margin: 0, fontSize: '2rem', color: '#f8fafc', fontWeight: '800', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '-0.5px' }}>{value}</h2>
+                            <span style={{ color: `rgb(${color})`, fontWeight: '700', fontSize: '0.8rem', letterSpacing: '0.5px' }}>{unit}</span>
                         </>
                     )}
                 </div>
@@ -248,14 +268,22 @@ const Analytics = () => {
     );
 
     return (
-        <div style={{ animation: 'none', height: '100%', display: 'flex', flexDirection: 'column', fontFamily: '"Inter", sans-serif' }}>
-            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid #1e293b', paddingBottom: '1rem' }}>
+        <div style={{ animation: 'slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1)', height: '100%', display: 'flex', flexDirection: 'column', color: '#e2e8f0', fontFamily: 'var(--font-sans, "Inter", sans-serif)' }}>
+            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#f8fafc', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                        OFFICE OF INTELLIGENCE & ANALYSIS
+                     <h1 style={{ 
+                         fontSize: '2rem', 
+                         fontWeight: '800', 
+                         background: 'linear-gradient(to right, #fff, #94a3b8)', 
+                         WebkitBackgroundClip: 'text', 
+                         WebkitTextFillColor: 'transparent',
+                         margin: 0,
+                         letterSpacing: '-0.5px'
+                     }}>
+                        Intelligence Analytics
                     </h1>
-                    <p style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', marginTop: '4px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                        <LineChart size={14} /> NATIONAL CASE METRICS LOG
+                    <p style={{ color: '#0ea5e9', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', marginTop: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+                        <LineChart size={16} /> Data Synthesis & Pattern Analysis
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -264,22 +292,25 @@ const Analytics = () => {
                         onClick={fetchAnalytics}
                         disabled={isLoading}
                         style={{ 
-                            background: '#0f172a', 
-                            border: '1px solid #334155', 
-                            padding: '6px 12px', 
-                            borderRadius: '2px', 
+                            background: 'rgba(255,255,255,0.03)', 
+                            border: '1px solid rgba(255,255,255,0.08)', 
+                            padding: '10px 16px', 
+                            borderRadius: '12px', 
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            color: '#94a3b8',
-                            fontSize: '0.75rem',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase'
+                            gap: '8px',
+                            color: '#e2e8f0',
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
                         }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
                     >
-                        <RefreshCw size={12} style={{ animation: isLoading ? 'spin 1s linear infinite' : 'none' }} />
-                        SYNC DEPT DATA
+                        <RefreshCw size={14} style={{ animation: isLoading ? 'spin 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite' : 'none' }} />
+                        Refresh Data
                     </button>
                     
                     {/* PDF Export Button */}
@@ -287,23 +318,26 @@ const Analytics = () => {
                         onClick={exportToPDF}
                         disabled={isExporting || isLoading}
                         style={{ 
-                            background: '#1d4ed8', 
-                            border: '1px solid #2563eb', 
-                            padding: '6px 16px', 
-                            borderRadius: '2px', 
+                            background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)', 
+                            border: '1px solid rgba(255,255,255,0.1)', 
+                            padding: '10px 18px', 
+                            borderRadius: '12px', 
                             cursor: isExporting ? 'wait' : 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
                             color: '#ffffff',
-                            fontSize: '0.75rem',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px'
+                            fontSize: '0.8rem',
+                            fontWeight: '700',
+                            letterSpacing: '0.5px',
+                            boxShadow: '0 4px 15px rgba(37, 99, 235, 0.4)',
+                            transition: 'all 0.2s'
                         }}
+                        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 99, 235, 0.6)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 15px rgba(37, 99, 235, 0.4)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
-                        <Download size={14} style={{ animation: isExporting ? 'pulse 1s infinite' : 'none' }} />
-                        {isExporting ? 'GENERATING...' : 'EXPORT OFFICIAL DOC'}
+                        <Download size={16} style={{ animation: isExporting ? 'bounce 1s infinite' : 'none' }} />
+                        {isExporting ? 'Exporting...' : 'Export PDF'}
                     </button>
 
                     {/* Date Range Dropdown */}
@@ -465,94 +499,138 @@ const Analytics = () => {
             {/* Report Content - for PDF export */}
             <div ref={reportRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '10px 0' }}>
                 {/* Top Metrics Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <MetricCard title="ACTIVE DEPLOYED NODES" value={metrics.onlineNodes} unit={`/ ${metrics.totalNodes} CAMS`} icon={Activity} color="59,130,246" loading={isLoading} />
-                    <MetricCard title="AI CONFIDENCE INDEX" value={metrics.aiConfidenceAvg.toFixed(1)} unit="%" icon={Target} color="14,165,233" loading={isLoading} />
-                    <MetricCard title="OPEN CASE FILES" value={metrics.totalPersons} unit="INDIVIDUALS" icon={Users} color="168,85,247" loading={isLoading} />
-                    <MetricCard title="VERIFIED INCIDENTS TODAY" value={metrics.alertsToday} unit="REPORTS" icon={ShieldAlert} color="239,68,68" loading={isLoading} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                    <MetricCard title="Active Network Nodes" value={metrics.onlineNodes} unit={`/ ${metrics.totalNodes} ONLINE`} icon={Activity} color="16, 185, 129" loading={isLoading} />
+                    <MetricCard title="Mean Confidence" value={metrics.aiConfidenceAvg.toFixed(1)} unit="%" icon={Target} color="14, 165, 233" loading={isLoading} />
+                    <MetricCard title="Profile Directory" value={metrics.totalPersons} unit="IDENTITIES" icon={Users} color="139, 92, 246" loading={isLoading} />
+                    <MetricCard title="Today's Verified Hits" value={metrics.alertsToday} unit="MATCHES" icon={ShieldAlert} color="244, 63, 94" loading={isLoading} />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '7fr 4fr', gap: '1rem', flex: 1, minHeight: '400px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '7fr 4fr', gap: '1.5rem', flex: 1, minHeight: '400px' }}>
                     
-                    {/* Left: Timeline Chart (Tactical Implementation) */}
-                    <div style={{ padding: '1.25rem', background: '#0a0f18', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                    {/* Left: Timeline Chart (Breathtaking Modern Look) */}
+                    <div style={{ 
+                        background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%)', 
+                        border: '1px solid rgba(255, 255, 255, 0.05)', 
+                        backdropFilter: 'blur(20px)',
+                        borderRadius: '24px', 
+                        padding: '2rem', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        position: 'relative',
+                        boxShadow: '0 20px 40px -20px rgba(0,0,0,0.5)',
+                        overflow: 'hidden'
+                    }}>
+                        {/* Immersive glow */}
+                        <div style={{ position: 'absolute', top: 0, right: 0, width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(14, 165, 233, 0.05) 0%, transparent 70%)', borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }}></div>
                         
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                            <h3 style={{ fontSize: '0.85rem', fontWeight: '800', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <BarChart2 size={16} color="#3b82f6" /> INCIDENT FREQUENCY TIMELINE
-                            </h3>
-                            <div style={{ background: '#1e293b', border: '1px solid #334155', padding: '4px 8px', fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold' }}>
-                                {getDisplayLabel().toUpperCase()}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', zIndex: 1 }}>
+                            <div>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#f8fafc', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px', letterSpacing: '0.5px' }}>
+                                    <BarChart2 size={18} color="#38bdf8" /> Incident Volume Timeline
+                                </h3>
+                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8', fontWeight: '500' }}>Comprehensive mapping of alert triggers</p>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', color: '#e2e8f0', fontWeight: '600', letterSpacing: '0.5px', backdropFilter: 'blur(10px)' }}>
+                                {getDisplayLabel()}
                             </div>
                         </div>
 
-                        <div style={{ flex: 1, position: 'relative', minHeight: '250px', marginTop: '10px' }}>
+                        <div style={{ flex: 1, position: 'relative', minHeight: '280px', marginTop: '10px', zIndex: 1 }}>
                             {isLoading ? (
                                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div style={{ width: '30px', height: '30px', border: '2px solid transparent', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                                    <div style={{ width: '40px', height: '40px', border: '3px solid rgba(56, 189, 248, 0.1)', borderTopColor: '#38bdf8', borderRadius: '50%', animation: 'spin 1s ease-in-out infinite' }}></div>
                                 </div>
                             ) : metrics.timeline.length === 0 ? (
-                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
-                                    <LineChart size={32} color="#475569" style={{ marginBottom: '10px' }} />
-                                    <p style={{ color: '#475569', fontWeight: 'bold', letterSpacing: '2px', fontSize: '0.75rem', margin: 0 }}>NO RECORDS FOUND</p>
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>
+                                    <div style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '50%', marginBottom: '15px' }}>
+                                        <LineChart size={36} color="#475569" />
+                                    </div>
+                                    <p style={{ color: '#94a3b8', fontWeight: '600', letterSpacing: '1px', fontSize: '0.9rem', margin: 0 }}>NO ANALYTICS FOR SELECTED DATES</p>
                                 </div>
                             ) : (
                                 <svg width="100%" height="100%" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                                    <defs>
+                                        <linearGradient id="premiumBarGradient" x1="0" y1="1" x2="0" y2="0">
+                                            <stop offset="0%" stopColor="rgba(56, 189, 248, 0.2)" />
+                                            <stop offset="100%" stopColor="rgba(56, 189, 248, 1)" />
+                                        </linearGradient>
+                                        <filter id="softGlow">
+                                            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                                            <feMerge>
+                                                <feMergeNode in="coloredBlur"/>
+                                                <feMergeNode in="SourceGraphic"/>
+                                            </feMerge>
+                                        </filter>
+                                    </defs>
                                     
-                                    {/* Horizontal Grid lines */}
+                                    {/* Subdued Grid */}
                                     {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
                                         <g key={`grid-${i}`}>
-                                            <line x1="0" y1={`${ratio * 90}%`} x2="100%" y2={`${ratio * 90}%`} stroke="#1e293b" strokeWidth="1" strokeDasharray={ratio === 1 ? "0" : "2,2"} />
+                                            <line x1="0" y1={`${ratio * 85}%`} x2="100%" y2={`${ratio * 85}%`} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
                                             {ratio !== 1 && (
-                                                <text x="0" y={`${ratio * 90}%`} dy="-4" fill="#64748b" fontSize="9" fontFamily="monospace">
+                                                <text x="0" y={`${ratio * 85}%`} dy="-6" fill="#64748b" fontSize="10" fontWeight="600" fontFamily="var(--font-mono, monospace)">
                                                     {Math.round(Math.max(...metrics.timeline.map(d => d.count)) * (1 - ratio))}
                                                 </text>
                                             )}
                                         </g>
                                     ))}
 
-                                    {/* Bars */}
+                                    {/* Floating Bars */}
                                     {metrics.timeline.map((item, i) => {
                                         const maxVal = Math.max(...metrics.timeline.map(d => d.count), 1);
                                         const count = item.count;
-                                        const heightPercent = count === 0 ? 0 : (count / maxVal) * 90;
-                                        const gap = metrics.timeline.length > 30 ? 1 : (metrics.timeline.length > 15 ? 2 : 10);
+                                        const heightPercent = count === 0 ? 0 : (count / maxVal) * 85;
+                                        const gap = metrics.timeline.length > 30 ? 2 : (metrics.timeline.length > 15 ? 6 : 16);
                                         const barWidth = `calc((100% - ${(metrics.timeline.length - 1) * gap}px) / ${metrics.timeline.length})`;
                                         
                                         return (
-                                            <g key={`bar-${i}`} transform={`translate(0, 0)`}>
+                                            <g key={`bar-${i}`} transform={`translate(0, 0)`} style={{ transition: 'all 0.3s' }}>
+                                                {/* Hover capture box */}
+                                                <rect 
+                                                    x={`calc(${i} * (${barWidth} + ${gap}px))`} 
+                                                    y="0" 
+                                                    width={barWidth} 
+                                                    height="85%" 
+                                                    fill="transparent" 
+                                                />
                                                 {count > 0 && (
                                                     <rect 
                                                         x={`calc(${i} * (${barWidth} + ${gap}px) + 2px)`} 
-                                                        y={`${90 - heightPercent}%`} 
+                                                        y={`${85 - heightPercent}%`} 
                                                         width={`calc(${barWidth} - 4px)`} 
                                                         height={`${heightPercent}%`} 
-                                                        fill="#3b82f6" 
+                                                        fill="url(#premiumBarGradient)" 
+                                                        rx="4" 
+                                                        ry="4"
+                                                        filter="url(#softGlow)"
+                                                        style={{ transition: 'height 1s cubic-bezier(0.16, 1, 0.3, 1), y 1s cubic-bezier(0.16, 1, 0.3, 1)' }}
                                                     />
                                                 )}
                                                 {count > 0 && (
                                                     <text 
                                                         x={`calc(${i} * (${barWidth} + ${gap}px) + (${barWidth} / 2))`} 
-                                                        y={`${90 - heightPercent}%`} 
-                                                        dy="-5" 
+                                                        y={`${85 - heightPercent}%`} 
+                                                        dy="-10" 
                                                         textAnchor="middle" 
-                                                        fill="#cbd5e1" 
-                                                        fontSize="9" 
-                                                        fontFamily="monospace" 
+                                                        fill="#ffffff" 
+                                                        fontSize="11" 
+                                                        fontFamily="var(--font-mono, monospace)" 
+                                                        fontWeight="bold"
                                                     >
                                                         {count}
                                                     </text>
                                                 )}
                                                 <text 
                                                     x={`calc(${i} * (${barWidth} + ${gap}px) + (${barWidth} / 2))`} 
-                                                    y="96%" 
+                                                    y="95%" 
                                                     textAnchor="middle" 
-                                                    fill="#64748b" 
-                                                    fontSize="8" 
-                                                    fontFamily="monospace"
-                                                    transform={metrics.timeline.length > 15 ? `rotate(-45, calc(${i} * (${barWidth} + ${gap}px) + (${barWidth} / 2)), 96%)` : ""}
+                                                    fill="#94a3b8" 
+                                                    fontSize="10" 
+                                                    fontWeight="600"
+                                                    transform={metrics.timeline.length > 15 ? `rotate(-45, calc(${i} * (${barWidth} + ${gap}px) + (${barWidth} / 2)), 95%)` : ""}
                                                 >
-                                                    {metrics.timeline.length > 30 && i % 2 !== 0 ? '' : item.label.toUpperCase()}
+                                                    {metrics.timeline.length > 30 && i % 2 !== 0 ? '' : item.label}
                                                 </text>
                                             </g>
                                         );
@@ -563,65 +641,99 @@ const Analytics = () => {
                     </div>
 
                     {/* Right: Demographics */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
 
-                        {/* Gender Breakdown Container */}
-                        <div style={{ padding: '1.25rem', background: '#0a0f18', border: '1px solid #1e293b', flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
-                            <h3 style={{ fontSize: '0.85rem', fontWeight: '800', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 15px 0', borderBottom: '1px solid #1e293b', paddingBottom: '10px' }}>
-                                TARGET DEMOGRAPHICS (GENDER)
+                        {/* Gender Demographic Card */}
+                        <div style={{ 
+                            background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%)', 
+                            border: '1px solid rgba(255, 255, 255, 0.05)', 
+                            backdropFilter: 'blur(20px)',
+                            borderRadius: '24px', 
+                            padding: '1.75rem', 
+                            flex: '1 1 auto', 
+                            display: 'flex', 
+                            flexDirection: 'column',
+                            boxShadow: '0 20px 40px -20px rgba(0,0,0,0.5)'
+                        }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#f8fafc', letterSpacing: '0.5px', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <PieChart size={18} color="#8b5cf6" /> Identified Gender Spread
                             </h3>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1, marginTop: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: 1 }}>
                                 <div style={{ 
-                                    width: '100px', height: '100px', borderRadius: '50%', 
+                                    width: '110px', height: '110px', borderRadius: '50%', 
                                     background: (metrics.demographics.male === 0 && metrics.demographics.female === 0) 
-                                        ? '#1e293b' 
-                                        : `conic-gradient(#3b82f6 0% ${metrics.demographics.male}%, #8b5cf6 ${metrics.demographics.male}% 100%)`, 
-                                    border: '2px solid #0f172a',
+                                        ? 'rgba(255,255,255,0.05)' 
+                                        : `conic-gradient(#0ea5e9 0% ${metrics.demographics.male}%, #d946ef ${metrics.demographics.male}% 100%)`, 
+                                    boxShadow: '0 0 30px rgba(139, 92, 246, 0.2)',
                                     position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                                 }}>
-                                    <div style={{ width: '60px', height: '60px', background: '#0a0f18', borderRadius: '50%', border: '1px solid #1e293b' }}></div>
+                                    <div style={{ width: '80px', height: '80px', background: '#0f172a', borderRadius: '50%', border: '4px solid rgba(255,255,255,0.02)', boxShadow: 'inset 0 4px 10px rgba(0,0,0,0.5)' }}></div>
                                 </div>
-                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                            <span style={{ color: '#94a3b8', fontSize: '0.7rem', fontWeight: 'bold' }}>MALE IDENTIFIED</span>
-                                            <span style={{ color: '#f8fafc', fontWeight: 'bold', fontFamily: 'monospace' }}>{metrics.demographics.male}%</span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <span style={{ color: '#cbd5e1', fontSize: '0.8rem', fontWeight: '600', letterSpacing: '0.5px' }}>Male</span>
+                                            <span style={{ color: '#0ea5e9', fontWeight: '800', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.9rem' }}>{metrics.demographics.male}%</span>
                                         </div>
-                                        <div style={{ height: '4px', background: '#1e293b' }}>
-                                            <div style={{ width: `${metrics.demographics.male}%`, height: '100%', background: '#3b82f6' }}></div>
+                                        <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                            <div style={{ width: `${metrics.demographics.male}%`, height: '100%', background: 'linear-gradient(90deg, #0284c7, #0ea5e9)', borderRadius: '3px', transition: 'width 1.5s cubic-bezier(0.16, 1, 0.3, 1)' }}></div>
                                         </div>
                                     </div>
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                            <span style={{ color: '#94a3b8', fontSize: '0.7rem', fontWeight: 'bold' }}>FEMALE IDENTIFIED</span>
-                                            <span style={{ color: '#f8fafc', fontWeight: 'bold', fontFamily: 'monospace' }}>{metrics.demographics.female}%</span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <span style={{ color: '#cbd5e1', fontSize: '0.8rem', fontWeight: '600', letterSpacing: '0.5px' }}>Female</span>
+                                            <span style={{ color: '#d946ef', fontWeight: '800', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.9rem' }}>{metrics.demographics.female}%</span>
                                         </div>
-                                        <div style={{ height: '4px', background: '#1e293b' }}>
-                                            <div style={{ width: `${metrics.demographics.female}%`, height: '100%', background: '#8b5cf6' }}></div>
+                                        <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                            <div style={{ width: `${metrics.demographics.female}%`, height: '100%', background: 'linear-gradient(90deg, #a21caf, #d946ef)', borderRadius: '3px', transition: 'width 1.5s cubic-bezier(0.16, 1, 0.3, 1)' }}></div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Age Breakdown Container */}
-                        <div style={{ padding: '1.25rem', background: '#0a0f18', border: '1px solid #1e293b', flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
-                            <h3 style={{ fontSize: '0.85rem', fontWeight: '800', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 15px 0', borderBottom: '1px solid #1e293b', paddingBottom: '10px' }}>
-                                AGE SUB-GROUPS
+                        {/* Age Demographic Card */}
+                        <div style={{ 
+                            background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%)', 
+                            border: '1px solid rgba(255, 255, 255, 0.05)', 
+                            backdropFilter: 'blur(20px)',
+                            borderRadius: '24px', 
+                            padding: '1.75rem', 
+                            flex: '1 1 auto', 
+                            display: 'flex', 
+                            flexDirection: 'column',
+                            boxShadow: '0 20px 40px -20px rgba(0,0,0,0.5)'
+                        }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#f8fafc', letterSpacing: '0.5px', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <Users size={18} color="#10b981" /> Age Distribution
                             </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, justifyContent: 'center', marginTop: '10px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', flex: 1, justifyContent: 'center' }}>
                                 {Object.entries(metrics.demographics.ageGroup).map(([age, pct], idx) => {
-                                    const colors = ['#0284c7', '#3b82f6', '#6366f1', '#8b5cf6'];
-                                    const color = colors[idx % colors.length];
+                                    const gradients = [
+                                        'linear-gradient(90deg, #0284c7, #38bdf8)',
+                                        'linear-gradient(90deg, #4f46e5, #818cf8)',
+                                        'linear-gradient(90deg, #9333ea, #c084fc)',
+                                        'linear-gradient(90deg, #e11d48, #fb7185)'
+                                    ];
+                                    const glowColors = ['#38bdf8', '#818cf8', '#c084fc', '#fb7185'];
+                                    const gradient = gradients[idx % gradients.length];
+                                    const glow = glowColors[idx % glowColors.length];
                                     
                                     return (
                                         <div key={age}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                                <span style={{ color: '#94a3b8', fontSize: '0.7rem', fontWeight: 'bold' }}>{age} YEARS OLD</span>
-                                                <span style={{ color: '#f8fafc', fontFamily: 'monospace', fontSize: '0.75rem' }}>{pct}%</span>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                <span style={{ color: '#cbd5e1', fontSize: '0.8rem', fontWeight: '600', letterSpacing: '0.5px' }}>{age} YRS</span>
+                                                <span style={{ color: '#f8fafc', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.9rem', fontWeight: '800' }}>{pct}%</span>
                                             </div>
-                                            <div style={{ height: '4px', background: '#1e293b' }}>
-                                                <div style={{ width: `${pct}%`, height: '100%', background: color, transition: 'width 1s' }}></div>
+                                            <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                                <div style={{ 
+                                                    width: `${pct}%`, 
+                                                    height: '100%', 
+                                                    background: gradient, 
+                                                    boxShadow: `0 0 10px ${glow}80`,
+                                                    borderRadius: '3px', 
+                                                    transition: `width 1.5s cubic-bezier(0.16, 1, 0.3, 1) ${idx * 0.15}s` 
+                                                }}></div>
                                             </div>
                                         </div>
                                     );

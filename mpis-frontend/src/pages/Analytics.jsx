@@ -450,7 +450,7 @@ const Analytics = () => {
             )}
 
             {/* Report Content - for PDF export */}
-            <div ref={reportRef}>
+            <div ref={reportRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '10px 0' }}>
                 {/* Top Metrics Row */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
                     <MetricCard title="Active Surveillance Nodes" value={metrics.onlineNodes} unit={`/ ${metrics.totalNodes} CAMERAS`} icon={Activity} color="100,255,218" loading={isLoading} />
@@ -459,135 +459,196 @@ const Analytics = () => {
                     <MetricCard title="Alerts Today" value={metrics.alertsToday} unit="MATCHES" icon={ShieldAlert} color="255,77,77" loading={isLoading} />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', flex: 1 }}>
-
-                    {/* Left: Timeline Chart */}
-                    <div className="glass-panel" style={{ padding: '2rem', borderRadius: '16px', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <BarChart2 size={18} color="var(--text-accent)" /> Alert Activity Volume
+                <div style={{ display: 'grid', gridTemplateColumns: '7fr 4fr', gap: '1.5rem', flex: 1, minHeight: '400px' }}>
+                    
+                    {/* Left: Timeline Chart (Premium SVG Implementation) */}
+                    <div className="glass-panel" style={{ padding: '1.5rem 2rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+                        {/* Background subtle grid */}
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px', zIndex: 0, pointerEvents: 'none' }}></div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', zIndex: 1 }}>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <BarChart2 size={18} color="#64ffda" /> Active Incident Frequency
                             </h3>
-                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
-                                {getDisplayLabel()}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#64ffda', boxShadow: '0 0 10px #64ffda' }}></span>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                    {getDisplayLabel()}
+                                </span>
+                            </div>
                         </div>
 
-                        <div style={{ height: '280px', display: 'flex', alignItems: 'flex-end', gap: metrics.timeline.length > 15 ? '4px' : '12px', padding: '30px 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
-                            {/* Grid lines */}
-                            <div style={{ position: 'absolute', top: '25%', left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
-                            <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
-                            <div style={{ position: 'absolute', top: '75%', left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
+                        <div style={{ flex: 1, position: 'relative', minHeight: '250px', zIndex: 1, marginTop: '10px' }}>
+                            {isLoading ? (
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ width: '40px', height: '40px', border: '3px solid rgba(100,255,218,0.2)', borderTopColor: '#64ffda', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                                </div>
+                            ) : metrics.timeline.length === 0 ? (
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
+                                    <LineChart size={48} color="var(--text-secondary)" style={{ marginBottom: '15px' }} />
+                                    <p style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', margin: 0 }}>NO ANALYTICS DATA</p>
+                                </div>
+                            ) : (
+                                <svg width="100%" height="100%" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                                    <defs>
+                                        <linearGradient id="barGradient" x1="0" y1="1" x2="0" y2="0">
+                                            <stop offset="0%" stopColor="rgba(0,123,255,0.1)" />
+                                            <stop offset="100%" stopColor="rgba(100,255,218,0.9)" />
+                                        </linearGradient>
+                                        <filter id="barGlow">
+                                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                            <feMerge>
+                                                <feMergeNode in="coloredBlur"/>
+                                                <feMergeNode in="SourceGraphic"/>
+                                            </feMerge>
+                                        </filter>
+                                    </defs>
+                                    
+                                    {/* Horizontal Grid lines */}
+                                    {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
+                                        <g key={`grid-${i}`}>
+                                            <line x1="0" y1={`${ratio * 90}%`} x2="100%" y2={`${ratio * 90}%`} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray={ratio === 1 ? "0" : "4,4"} />
+                                            {ratio !== 1 && (
+                                                <text x="0" y={`${ratio * 90}%`} dy="-4" fill="rgba(255,255,255,0.2)" fontSize="10" fontFamily="monospace">
+                                                    {Math.round(Math.max(...metrics.timeline.map(d => d.count)) * (1 - ratio))}
+                                                </text>
+                                            )}
+                                        </g>
+                                    ))}
 
-                            {(() => {
-                                const maxVal = Math.max(...metrics.timeline.map(d => d.count), 1);
-                                const chartHeight = 240; // Fixed pixel height for bars
-                                return metrics.timeline.map((item, i) => {
-                                    const barHeight = item.count > 0 ? Math.max((item.count / maxVal) * chartHeight, 8) : 4;
-                                    return (
-                                        <div key={i} style={{ 
-                                            flex: 1, 
-                                            display: 'flex', 
-                                            flexDirection: 'column', 
-                                            justifyContent: 'flex-end',
-                                            alignItems: 'center', 
-                                            minWidth: metrics.timeline.length > 15 ? '20px' : '40px',
-                                            height: '100%',
-                                            position: 'relative'
-                                        }}>
-                                            {/* Count label above bar */}
-                                            <span style={{ 
-                                                position: 'absolute',
-                                                bottom: `${barHeight + 8}px`,
-                                                color: 'var(--text-primary)', 
-                                                fontSize: metrics.timeline.length > 15 ? '0.65rem' : '0.85rem', 
-                                                fontFamily: 'var(--font-mono)',
-                                                fontWeight: 'bold'
-                                            }}>{item.count}</span>
-                                            {/* The actual bar */}
-                                            <div style={{
-                                                width: metrics.timeline.length > 15 ? '80%' : '70%',
-                                                height: `${barHeight}px`,
-                                                background: item.count > 0 
-                                                    ? 'linear-gradient(0deg, rgba(0,123,255,0.4) 0%, rgba(100,255,218,1) 100%)' 
-                                                    : 'rgba(100,255,218,0.2)',
-                                                borderRadius: '4px 4px 0 0',
-                                                transition: 'height 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                boxShadow: item.count > 0 ? '0 -4px 20px rgba(100,255,218,0.4)' : 'none'
-                                            }} />
-                                        </div>
-                                    );
-                                });
-                            })()}
-                        </div>
-                        <div style={{ display: 'flex', gap: metrics.timeline.length > 15 ? '4px' : '12px', marginTop: '10px', overflow: 'hidden' }}>
-                            {metrics.timeline.map((item, i) => (
-                                <div key={i} style={{ 
-                                    flex: 1, 
-                                    textAlign: 'center', 
-                                    color: 'var(--text-secondary)', 
-                                    fontSize: metrics.timeline.length > 15 ? '0.6rem' : '0.7rem', 
-                                    fontWeight: 'bold',
-                                    minWidth: metrics.timeline.length > 15 ? '20px' : '40px',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis'
-                                }}>{item.label}</div>
-                            ))}
+                                    {/* Bars */}
+                                    {metrics.timeline.map((item, i) => {
+                                        const maxVal = Math.max(...metrics.timeline.map(d => d.count), 1);
+                                        const count = item.count;
+                                        const heightPercent = count === 0 ? 0 : (count / maxVal) * 90;
+                                        const gap = metrics.timeline.length > 30 ? 2 : (metrics.timeline.length > 15 ? 5 : 15);
+                                        const barWidth = `calc((100% - ${(metrics.timeline.length - 1) * gap}px) / ${metrics.timeline.length})`;
+                                        
+                                        return (
+                                            <g key={`bar-${i}`} transform={`translate(0, 0)`}>
+                                                {/* Bar container (for hovering/interaction) */}
+                                                <rect 
+                                                    x={`calc(${i} * (${barWidth} + ${gap}px))`} 
+                                                    y="0" 
+                                                    width={barWidth} 
+                                                    height="90%" 
+                                                    fill="transparent" 
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                                {/* Actual colored bar */}
+                                                {count > 0 && (
+                                                    <rect 
+                                                        x={`calc(${i} * (${barWidth} + ${gap}px) + 2px)`} 
+                                                        y={`${90 - heightPercent}%`} 
+                                                        width={`calc(${barWidth} - 4px)`} 
+                                                        height={`${heightPercent}%`} 
+                                                        fill="url(#barGradient)" 
+                                                        rx="3" 
+                                                        ry="3"
+                                                        filter="url(#barGlow)"
+                                                    />
+                                                )}
+                                                {/* Top Label (only show for count > 0) */}
+                                                {count > 0 && (
+                                                    <text 
+                                                        x={`calc(${i} * (${barWidth} + ${gap}px) + (${barWidth} / 2))`} 
+                                                        y={`${90 - heightPercent}%`} 
+                                                        dy="-8" 
+                                                        textAnchor="middle" 
+                                                        fill="white" 
+                                                        fontSize="10" 
+                                                        fontFamily="var(--font-mono)" 
+                                                        fontWeight="bold"
+                                                    >
+                                                        {count}
+                                                    </text>
+                                                )}
+                                                {/* Bottom Date Label (rotated if many) */}
+                                                <text 
+                                                    x={`calc(${i} * (${barWidth} + ${gap}px) + (${barWidth} / 2))`} 
+                                                    y="96%" 
+                                                    textAnchor="middle" 
+                                                    fill="var(--text-secondary)" 
+                                                    fontSize="9" 
+                                                    fontWeight="bold"
+                                                    transform={metrics.timeline.length > 15 ? `rotate(-45, calc(${i} * (${barWidth} + ${gap}px) + (${barWidth} / 2)), 96%)` : ""}
+                                                >
+                                                    {metrics.timeline.length > 30 && i % 2 !== 0 ? '' : item.label}
+                                                </text>
+                                            </g>
+                                        );
+                                    })}
+                                </svg>
+                            )}
                         </div>
                     </div>
 
                     {/* Right: Demographics */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
 
-                        {/* Gender Breakdown */}
-                        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '16px', flex: 1 }}>
-                            <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <PieChart size={16} color="var(--brand-blue)" /> Gender Distribution
+                        {/* Gender Breakdown Container */}
+                        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '16px', flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
+                            <h3 style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <PieChart size={16} color="#007bff" /> Target Demographics
                             </h3>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', height: 'calc(100% - 40px)' }}>
-                                <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: `conic-gradient(var(--brand-blue) 0% ${metrics.demographics.male}%, var(--text-accent) ${metrics.demographics.male}% 100%)`, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
-                                    <div style={{ width: '85px', height: '85px', background: 'var(--bg-secondary)', borderRadius: '50%' }}></div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
+                                {/* Safe pure CSS fallback for conic-gradient */}
+                                <div style={{ 
+                                    width: '100px', height: '100px', borderRadius: '50%', 
+                                    background: (metrics.demographics.male === 0 && metrics.demographics.female === 0) 
+                                        ? 'rgba(255,255,255,0.05)' 
+                                        : `conic-gradient(#007bff 0% ${metrics.demographics.male}%, #64ffda ${metrics.demographics.male}% 100%)`, 
+                                    position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                    boxShadow: '0 0 20px rgba(0,0,0,0.3)', flexShrink: 0
+                                }}>
+                                    <div style={{ width: '70px', height: '70px', background: 'var(--bg-secondary)', borderRadius: '50%', border: '4px solid rgba(0,0,0,0.2)' }}></div>
                                 </div>
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     <div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 'bold' }}>MALE</span>
-                                            <span style={{ color: 'var(--brand-blue)', fontWeight: 'bold' }}>{metrics.demographics.male}%</span>
+                                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '1px' }}>MALE</span>
+                                            <span style={{ color: '#007bff', fontWeight: 'bold', fontFamily: 'monospace' }}>{metrics.demographics.male}%</span>
                                         </div>
-                                        <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px' }}>
-                                            <div style={{ width: `${metrics.demographics.male}%`, height: '100%', background: 'var(--brand-blue)', borderRadius: '3px', transition: 'width 0.8s ease' }}></div>
+                                        <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                            <div style={{ width: `${metrics.demographics.male}%`, height: '100%', background: '#007bff', borderRadius: '3px', transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }}></div>
                                         </div>
                                     </div>
                                     <div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 'bold' }}>FEMALE</span>
-                                            <span style={{ color: 'var(--text-accent)', fontWeight: 'bold' }}>{metrics.demographics.female}%</span>
+                                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '1px' }}>FEMALE</span>
+                                            <span style={{ color: '#64ffda', fontWeight: 'bold', fontFamily: 'monospace' }}>{metrics.demographics.female}%</span>
                                         </div>
-                                        <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px' }}>
-                                            <div style={{ width: `${metrics.demographics.female}%`, height: '100%', background: 'var(--text-accent)', borderRadius: '3px', transition: 'width 0.8s ease' }}></div>
+                                        <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                            <div style={{ width: `${metrics.demographics.female}%`, height: '100%', background: '#64ffda', borderRadius: '3px', transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }}></div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Age Breakdown */}
-                        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '16px', flex: 1 }}>
-                            <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <Users size={16} color="var(--text-accent)" /> Age Demographics
+                        {/* Age Breakdown Container */}
+                        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '16px', flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
+                            <h3 style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Users size={16} color="#a855f7" /> Age Sub-groups
                             </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', height: 'calc(100% - 40px)', justifyContent: 'center' }}>
-                                {Object.entries(metrics.demographics.ageGroup).map(([age, pct], idx) => (
-                                    <div key={age}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 'bold' }}>{age} YRS</span>
-                                            <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{pct}%</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, justifyContent: 'center' }}>
+                                {Object.entries(metrics.demographics.ageGroup).map(([age, pct], idx) => {
+                                    // Calculate gradient colors dynamically based on index
+                                    const colors = ['#64ffda', '#007bff', '#a855f7', '#ff4d4d'];
+                                    const color = colors[idx % colors.length];
+                                    
+                                    return (
+                                        <div key={age}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '1px' }}>{age} YRS</span>
+                                                <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>{pct}%</span>
+                                            </div>
+                                            <div style={{ height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                                <div style={{ width: `${pct}%`, height: '100%', background: color, boxShadow: `0 0 10px ${color}80`, borderRadius: '3px', transition: 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1) ${(idx * 0.1)}s' }}></div>
+                                            </div>
                                         </div>
-                                        <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px' }}>
-                                            <div style={{ width: `${pct}%`, height: '100%', background: `rgba(100,255,218,${1 - (idx * 0.2)})`, borderRadius: '3px', transition: 'width 0.8s ease' }}></div>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
 

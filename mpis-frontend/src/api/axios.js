@@ -7,20 +7,15 @@ if (!BASE_URL) {
     throw new Error("VITE_API_URL is not defined.");
 }
 
-// 🔥 FIXED HERE
+// ✅ FIXED: removed global Content-Type
 const api = axios.create({
     baseURL: BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
     timeout: 60000,
 });
 
+// ✅ FIXED: removed global Content-Type
 export const silentApi = axios.create({
     baseURL: BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
     timeout: 60000,
 });
 

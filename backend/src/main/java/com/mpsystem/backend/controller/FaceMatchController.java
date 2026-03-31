@@ -28,17 +28,51 @@ public class FaceMatchController {
 
         try {
 
+            // ✅ VALIDATION
             if (file == null || file.isEmpty()) {
                 return ResponseEntity.ok(
-                        Map.of("status", "ERROR", "message", "Empty file")
+                        Map.of(
+                                "status", "ERROR",
+                                "message", "Empty file"
+                        )
                 );
             }
 
             log.info("🔥 REQUEST RECEIVED");
 
-            Map<String, Object> response = aiClientService.matchFace(file);
+            Map<String, Object> res = aiClientService.matchFace(file);
 
-            return ResponseEntity.ok(response);
+            log.info("🔥 FINAL RESPONSE TO FRONTEND: {}", res);
+
+            // 🔴 HARD SAFETY (IMPORTANT)
+            if (res == null || !res.containsKey("status")) {
+                return ResponseEntity.ok(
+                        Map.of(
+                                "status", "ERROR",
+                                "message", "Invalid AI response"
+                        )
+                );
+            }
+
+            // 🔴 NORMALIZE RESPONSE (KEY FIX)
+            String status = String.valueOf(res.get("status"));
+
+            if (!status.equals("CONFIDENT_MATCH") &&
+                !status.equals("NO_MATCH") &&
+                !status.equals("NO_FACE") &&
+                !status.equals("ERROR")) {
+
+                return ResponseEntity.ok(
+                        Map.of(
+                                "status", "ERROR",
+                                "message", "Unknown AI status",
+                                "raw", res
+                        )
+                );
+            }
+
+            // ✅ SAFE RETURN
+            return ResponseEntity.ok(res);
 
         } catch (Exception e) {
 

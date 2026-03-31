@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /**
- * 🔐 MPIS Authentication Filter (FINAL CLEAN VERSION)
+ * 🔐 MPIS Authentication Filter (STABLE VERSION)
  */
 @Component
 public class AuthFilter implements Filter {
@@ -37,8 +37,14 @@ public class AuthFilter implements Filter {
         String path = req.getRequestURI();
         String method = req.getMethod();
 
-        // ✅ Allow CORS preflight
+        // ✅ Allow preflight
         if ("OPTIONS".equalsIgnoreCase(method)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // 🔥 IGNORE ROOT + STATIC CALLS (IMPORTANT FIX)
+        if (path.equals("/") || path.startsWith("/error")) {
             chain.doFilter(request, response);
             return;
         }
@@ -69,7 +75,7 @@ public class AuthFilter implements Filter {
     }
 
     /**
-     * ✅ FINAL PUBLIC ENDPOINT LIST
+     * ✅ PUBLIC ENDPOINTS (FINAL)
      */
     private boolean isPublicEndpoint(String path) {
         return path.startsWith("/api/auth") ||
@@ -80,10 +86,9 @@ public class AuthFilter implements Filter {
                path.startsWith("/api/cameras") ||
                path.startsWith("/api/alerts") ||
 
-               // 🔥 CRITICAL FIX (YOUR MATCH ENDPOINT)
+               // 🔥 FORENSIC (IMPORTANT)
                path.startsWith("/api/forensic") ||
 
-               path.startsWith("/api/match") || // optional legacy
                path.startsWith("/actuator") ||
                path.startsWith("/health") ||
                path.startsWith("/ws-alerts");
@@ -99,7 +104,6 @@ public class AuthFilter implements Filter {
             return authHeader.substring(BEARER_PREFIX.length());
         }
 
-        // 🔁 fallback (legacy support)
         String legacyToken = req.getHeader("X-SESSION-TOKEN");
         if (legacyToken != null && !legacyToken.isEmpty()) {
             return legacyToken;

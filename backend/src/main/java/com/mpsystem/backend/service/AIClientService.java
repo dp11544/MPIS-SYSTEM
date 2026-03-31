@@ -54,8 +54,9 @@ public class AIClientService {
 
             Map<String, Object> res = response.getBody();
 
-            log.info("🔥 AI RESPONSE: {}", res);
+            log.info("🔥 AI RAW RESPONSE: {}", res);
 
+            // 🔴 SAFETY: null check
             if (res == null) {
                 return Map.of(
                         "status", "ERROR",
@@ -63,14 +64,25 @@ public class AIClientService {
                 );
             }
 
+            // 🔴 SAFETY: AI error format
             if (res.containsKey("error")) {
                 return Map.of(
                         "status", "ERROR",
-                        "message", res.get("error"),
+                        "message", String.valueOf(res.get("error")),
                         "raw", res
                 );
             }
 
+            // 🔴 SAFETY: missing status → normalize
+            if (!res.containsKey("status")) {
+                return Map.of(
+                        "status", "ERROR",
+                        "message", "Invalid AI response",
+                        "raw", res
+                );
+            }
+
+            // ✅ FINAL SAFE RETURN
             return res;
 
         } catch (Exception e) {

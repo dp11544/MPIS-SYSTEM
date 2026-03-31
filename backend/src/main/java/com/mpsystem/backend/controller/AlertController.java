@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.mpsystem.backend.model.Alert;
 import com.mpsystem.backend.repository.AlertRepository;
+import com.mpsystem.backend.service.WebSocketBroadcastService; // 🔥 ADDED IMPORT
 
 @RestController
 @RequestMapping("/api/alerts")
@@ -16,9 +17,12 @@ import com.mpsystem.backend.repository.AlertRepository;
 public class AlertController {
 
     private final AlertRepository alertRepository;
+    private final WebSocketBroadcastService webSocketBroadcastService; // 🔥 ADDED DEPENDENCY
 
-    public AlertController(AlertRepository alertRepository) {
+    // 🔥 ADDED INJECTION
+    public AlertController(AlertRepository alertRepository, WebSocketBroadcastService webSocketBroadcastService) {
         this.alertRepository = alertRepository;
+        this.webSocketBroadcastService = webSocketBroadcastService;
     }
 
     /**
@@ -42,6 +46,10 @@ public class AlertController {
         );
 
         Alert saved = alertRepository.save(alert);
+        
+        // 🔥 THIS IS THE MAGIC LINE TO TRIGGER THE UI/SIREN
+        webSocketBroadcastService.broadcastAlert(saved);
+
         return ResponseEntity.ok(saved);
     }
 

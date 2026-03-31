@@ -77,6 +77,15 @@ useEffect(() => {
 
             if (data.status === "CONFIDENT_MATCH") {
                 console.log("✅ MATCH FOUND:", data);
+                
+                // 🔥 PUSH TO BACKEND SO IT CREATES AN ALERT + BROADCASTS IT
+                api.post('/alerts', {
+                    personId: data.personId || "UNKNOWN",
+                    personName: data.personName || "Unknown Match",
+                    similarityScore: data.similarity || 0.90,
+                    cameraId: "WEB_FRONTEND"
+                }).catch(err => console.error("Failed to ingest alert:", err));
+
             } else {
                 console.log("ℹ️ STATUS:", data.status);
             }

@@ -24,4 +24,6 @@ public class AlertIngestionRequest {
 
     @NotNull(message = "Timestamp is required")
     private Long detectedAt;
+
+    private String evidenceImage;
 }

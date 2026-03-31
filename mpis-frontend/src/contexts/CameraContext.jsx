@@ -85,12 +85,39 @@ export const CameraProvider = ({ children }) => {
                 if (res.data?.status === "CONFIDENT_MATCH") {
                     console.log("✅ GLOBAL MATCH DETECTED:", res.data);
                     
+                    const matchName = res.data.personName || "UNKNOWN";
+                    const matchId = res.data.personId || "N/A";
+                    const simScore = res.data.similarity || 0.90;
+                    
+                    // Stamp the evidence image on the canvas
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                    ctx.fillRect(10, 10, 520, 140);
+                    
+                    ctx.font = "bold 22px monospace";
+                    ctx.fillStyle = "#ff4d4d"; // Red alert text
+                    ctx.fillText(`🚨 MPIS EVIDENCE CAPTURE`, 25, 45);
+                    
+                    ctx.font = "bold 18px monospace";
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillText(`TARGET: ${matchName.toUpperCase()} (${matchId})`, 25, 80);
+                    
+                    ctx.fillStyle = "#00c864";
+                    ctx.fillText(`MATCH CONFIDENCE: ${Math.round(simScore * 100)}%`, 25, 110);
+                    
+                    ctx.fillStyle = "#aaaaaa";
+                    ctx.font = "14px monospace";
+                    ctx.fillText(`TIMESTAMP: ${new Date().toISOString()}`, 25, 135);
+                    
+                    const evidenceBase64 = canvas.toDataURL("image/jpeg", 0.65);
+
                     // Ingest alert directly to backend pipeline
                     api.post('/alerts', {
-                        personId: res.data.personId || "UNKNOWN",
-                        personName: res.data.personName || "Unknown Match",
-                        similarityScore: res.data.similarity || 0.90,
-                        cameraId: "WEB_FRONTEND"
+                        personId: matchId,
+                        personName: matchName,
+                        similarityScore: simScore,
+                        cameraId: "WEB_FRONTEND",
+                        evidenceImage: evidenceBase64,
+                        detectedAt: Date.now()
                     }).catch(err => console.error("Global alert ingestion failed:", err));
                 }
             } catch (err) {

@@ -45,6 +45,10 @@ public class AlertController {
                 com.mpsystem.backend.model.AlertState.DETECTED // Default state
         );
 
+        if (request.getEvidenceImage() != null && !request.getEvidenceImage().isEmpty()) {
+            alert.setEvidenceImagePath(request.getEvidenceImage());
+        }
+
         Alert saved = alertRepository.save(alert);
         
         // 🔥 THIS IS THE MAGIC LINE TO TRIGGER THE UI/SIREN

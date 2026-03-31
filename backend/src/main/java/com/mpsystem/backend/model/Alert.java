@@ -67,4 +67,8 @@ public class Alert {
     public String getModelUsed() { return modelUsed; }
     public LocalDateTime getDetectedAt() { return detectedAt; }
     public String getEvidenceImagePath() { return evidenceImagePath; }
+
+    public void setEvidenceImagePath(String evidenceImagePath) {
+        this.evidenceImagePath = evidenceImagePath;
+    }
 }

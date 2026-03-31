@@ -14,6 +14,7 @@ const Alerts = () => {
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedAlert, setSelectedAlert] = useState(null);
+    const [evidenceModalImage, setEvidenceModalImage] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterLevel, setFilterLevel] = useState('ALL');
     const [verifiedAlerts, setVerifiedAlerts] = useState(new Set());
@@ -181,6 +182,13 @@ const Alerts = () => {
                         </div>
                     </div>
                 </div>
+                
+                ${alertData.evidenceImagePath ? `
+                <div style="margin-top: 40px; border: 2px solid #ccc; border-radius: 12px; overflow: hidden;">
+                    <h3 style="background: #1a1a2e; color: #fff; padding: 15px; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">📸 CAMERA EVIDENCE FRAME</h3>
+                    <img src="${alertData.evidenceImagePath}" style="width: 100%; display: block;" alt="Evidence Frame" />
+                </div>
+                ` : ''}
                 
                 <div class="footer">
                     <p><strong>Missing Person Intelligence System</strong> | Generated: ${new Date().toLocaleString()}</p>
@@ -733,6 +741,27 @@ const Alerts = () => {
                                                 >
                                                     <Eye size={14} /> Inspect
                                                 </button>
+
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); if(alert.evidenceImagePath) setEvidenceModalImage(alert.evidenceImagePath); else toast.error('No evidence recorded'); }}
+                                                    style={{
+                                                        background: alert.evidenceImagePath ? 'linear-gradient(135deg, rgba(255,77,77,0.2), rgba(120,30,30,0.2))' : 'rgba(255,255,255,0.05)',
+                                                        border: `1px solid ${alert.evidenceImagePath ? 'rgba(255,77,77,0.4)' : 'transparent'}`,
+                                                        color: alert.evidenceImagePath ? '#ff4d4d' : 'rgba(255,255,255,0.2)',
+                                                        borderRadius: '8px',
+                                                        padding: '8px 16px',
+                                                        cursor: alert.evidenceImagePath ? 'pointer' : 'not-allowed',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: 'bold',
+                                                        marginLeft: '8px',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    <Camera size={14} /> Evidence
+                                                </button>
                                             </td>
                                         </tr>
                                     );
@@ -1116,6 +1145,26 @@ const Alerts = () => {
                                 Dismiss
                             </button>
                             <button 
+                                onClick={() => { if(selectedAlert.evidenceImagePath) setEvidenceModalImage(selectedAlert.evidenceImagePath); else toast.error('No evidence recorded'); }}
+                                disabled={!selectedAlert.evidenceImagePath}
+                                style={{
+                                    padding: '12px 24px',
+                                    borderRadius: '10px',
+                                    border: `1px solid ${selectedAlert.evidenceImagePath ? 'rgba(255,77,77,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                    background: selectedAlert.evidenceImagePath ? 'rgba(255,77,77,0.15)' : 'rgba(255,255,255,0.05)',
+                                    color: selectedAlert.evidenceImagePath ? '#ff4d4d' : 'rgba(255,255,255,0.3)',
+                                    cursor: selectedAlert.evidenceImagePath ? 'pointer' : 'not-allowed',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.9rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    opacity: selectedAlert.evidenceImagePath ? 1 : 0.5
+                                }}
+                            >
+                                <Camera size={16} /> Evidence
+                            </button>
+                            <button 
                                 onClick={() => markAsVerified(selectedAlert.id)}
                                 disabled={verifiedAlerts.has(selectedAlert.id)}
                                 style={{
@@ -1158,6 +1207,54 @@ const Alerts = () => {
                                 <Printer size={16} /> Print Report
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Evidence Image Viewer Modal */}
+            {evidenceModalImage && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.9)',
+                    zIndex: 99999,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backdropFilter: 'blur(10px)'
+                }} onClick={() => setEvidenceModalImage(null)}>
+                    <div style={{
+                        position: 'relative',
+                        maxWidth: '90vw',
+                        maxHeight: '90vh',
+                        background: '#000',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        boxShadow: '0 0 50px rgba(255,77,77,0.3)',
+                        border: '2px solid rgba(255,77,77,0.5)'
+                    }} onClick={e => e.stopPropagation()}>
+                        
+                        <div style={{
+                            position: 'absolute', top: 0, left: 0, right: 0,
+                            padding: '15px 20px',
+                            background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            zIndex: 10
+                        }}>
+                            <h3 style={{ margin: 0, color: '#ff4d4d', display: 'flex', alignItems: 'center', gap: '10px', letterSpacing: '2px', textShadow: '0 0 10px rgba(255,77,77,0.5)' }}>
+                                <Camera size={20} /> OFFICIAL EVIDENCE FRAME
+                            </h3>
+                            <button 
+                                onClick={() => setEvidenceModalImage(null)}
+                                style={{
+                                    background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white',
+                                    width: '32px', height: '32px', borderRadius: '50%',
+                                    display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer'
+                                }}
+                            ><X size={18} /></button>
+                        </div>
+                        
+                        <img src={evidenceModalImage} style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block' }} alt="Alert Evidence" />
                     </div>
                 </div>
             )}

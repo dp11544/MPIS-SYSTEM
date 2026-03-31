@@ -111,34 +111,40 @@ const analyzeImage = async () => {
             '/forensic/match-image',
             formData,
             {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                
             }
         );
 
         const data = response.data;
 
         // 🔥 FIX: HANDLE NEW API FORMAT
-        setResult({
-            match: data.status === 'CONFIDENT_MATCH',
-            personName: data.personName || 'Unknown',
-            personId: data.personId || null,
-            similarity: data.similarity || 0,
-            confidenceLevel: getConfidenceLevel(data.similarity),
-            status: data.status
-        });
+       if (!data || !data.status) {
+    throw new Error("Invalid server response");
+}
+
+if (data.status === "ERROR") {
+    throw new Error(data.message || "AI failed");
+}
+
+setResult({
+    match: data.status === 'CONFIDENT_MATCH',
+    personName: data.personName || 'Unknown',
+    personId: data.personId || null,
+    similarity: data.similarity || 0,
+    confidenceLevel: getConfidenceLevel(data.similarity),
+    status: data.status
+});
 
     } catch (err) {
         console.error('Forensic analysis error:', err);
 
-        if (!err.response) {
-            setError('Backend not reachable.');
-        } else if (err.response.status === 404) {
-            setError('API endpoint not found.');
-        } else if (err.response.status === 500) {
-            setError('Server error during analysis.');
-        } else {
-            setError(err.response?.data?.message || 'Analysis failed.');
-        }
+      if (err.message) {
+    setError(err.message);
+} else if (!err.response) {
+    setError('Backend not reachable.');
+} else {
+    setError(err.response?.data?.message || 'Analysis failed.');
+}
 
     } finally {
         setIsAnalyzing(false);

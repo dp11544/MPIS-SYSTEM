@@ -28,9 +28,9 @@ public class FaceMatchController {
 
         try {
 
-            // ✅ VALIDATION
+            // ================= VALIDATION =================
             if (file == null || file.isEmpty()) {
-                return ResponseEntity.ok(
+                return ResponseEntity.badRequest().body(
                         Map.of(
                                 "status", "ERROR",
                                 "message", "Empty file"
@@ -38,15 +38,25 @@ public class FaceMatchController {
                 );
             }
 
-            log.info("🔥 REQUEST RECEIVED");
+            if (!file.getContentType().startsWith("image/")) {
+                return ResponseEntity.badRequest().body(
+                        Map.of(
+                                "status", "ERROR",
+                                "message", "Only image files allowed"
+                        )
+                );
+            }
 
+            log.info("🔥 REQUEST RECEIVED: {}", file.getOriginalFilename());
+
+            // ================= CALL AI =================
             Map<String, Object> res = aiClientService.matchFace(file);
 
-            log.info("🔥 FINAL RESPONSE TO FRONTEND: {}", res);
+            log.info("🔥 AI RESPONSE: {}", res);
 
-            // 🔴 HARD SAFETY (IMPORTANT)
+            // ================= SAFETY =================
             if (res == null || !res.containsKey("status")) {
-                return ResponseEntity.ok(
+                return ResponseEntity.internalServerError().body(
                         Map.of(
                                 "status", "ERROR",
                                 "message", "Invalid AI response"
@@ -54,31 +64,32 @@ public class FaceMatchController {
                 );
             }
 
-            // 🔴 NORMALIZE RESPONSE (KEY FIX)
             String status = String.valueOf(res.get("status"));
 
-            if (!status.equals("CONFIDENT_MATCH") &&
-                !status.equals("NO_MATCH") &&
-                !status.equals("NO_FACE") &&
-                !status.equals("ERROR")) {
+            // ================= NORMALIZATION =================
+            switch (status) {
+                case "CONFIDENT_MATCH":
+                case "NO_MATCH":
+                case "NO_FACE":
+                case "ERROR":
+                    return ResponseEntity.ok(res);
 
-                return ResponseEntity.ok(
-                        Map.of(
-                                "status", "ERROR",
-                                "message", "Unknown AI status",
-                                "raw", res
-                        )
-                );
+                default:
+                    log.warn("⚠️ UNKNOWN AI STATUS: {}", status);
+                    return ResponseEntity.internalServerError().body(
+                            Map.of(
+                                    "status", "ERROR",
+                                    "message", "Unknown AI status",
+                                    "raw", res
+                            )
+                    );
             }
-
-            // ✅ SAFE RETURN
-            return ResponseEntity.ok(res);
 
         } catch (Exception e) {
 
             log.error("❌ CONTROLLER ERROR", e);
 
-            return ResponseEntity.ok(
+            return ResponseEntity.internalServerError().body(
                     Map.of(
                             "status", "ERROR",
                             "message", "Controller failed: " + e.getMessage()

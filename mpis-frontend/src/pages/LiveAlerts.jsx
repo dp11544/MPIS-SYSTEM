@@ -34,85 +34,98 @@ const LiveAlerts = () => {
     // =========================================================
     // 🔥 AUTO MATCH LOOP (EVERY 2 SEC)
     // =========================================================
-    useEffect(() => {
-        const interval = setInterval(() => {
-            captureAndMatch();
-        }, 2000);
+    let isProcessing = false;
 
-        return () => clearInterval(interval);
-    }, []);
+useEffect(() => {
+    const interval = setInterval(async () => {
+        if (isProcessing) return;
+
+        isProcessing = true;
+        await captureAndMatch();
+        isProcessing = false;
+
+    }, 2000);
+
+    return () => clearInterval(interval);
+}, []);
 
     const captureAndMatch = async () => {
-        if (!videoRef.current) return;
+    if (!videoRef.current || videoRef.current.videoWidth === 0) return;
 
-        const canvas = document.createElement("canvas");
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
 
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(videoRef.current, 0, 0);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0);
 
-        canvas.toBlob(async (blob) => {
-            if (!blob) return;
+    canvas.toBlob(async (blob) => {
+        if (!blob) return;
 
-            const formData = new FormData();
-            formData.append("file", blob, "frame.jpg");
+        const formData = new FormData();
+        formData.append("file", blob, "frame.jpg");
 
-            try {
-                const res = await api.post("/forensic/match-image", formData);
+        try {
+            const res = await api.post("/forensic/match-image", formData);
 
-                if (res.data.status === "CONFIDENT_MATCH") {
-                    console.log("MATCH FOUND:", res.data);
-                }
+            const data = res.data;
 
-            } catch (err) {
-                console.error("Match error", err);
+            if (!data || !data.status) {
+                console.warn("⚠️ Invalid response:", data);
+                return;
             }
-        }, "image/jpeg");
+
+            if (data.status === "CONFIDENT_MATCH") {
+                console.log("✅ MATCH FOUND:", data);
+            } else {
+                console.log("ℹ️ STATUS:", data.status);
+            }
+
+        } catch (err) {
+            console.error("❌ REAL ERROR:", err);
+        }
+
+    }, "image/jpeg");
+};
+
+        useEffect(() => {
+
+    let isMounted = true;
+
+    const fetchLatest = async () => {
+        try {
+            const res = await api.get('/alerts/latest');
+            if (isMounted && res.data) {
+                setLiveFeed(res.data.slice(0, 10));
+            }
+        } catch (err) {
+            console.error("Initial alerts fetch failed", err);
+        }
     };
 
-    // =========================================================
-    // INITIAL LOAD + WEBSOCKET
-    // =========================================================
-    useEffect(() => {
+    fetchLatest();
 
-        let isMounted = true;
+    const handleNewAlert = (alert) => {
+        if (!isMounted) return;
 
-        const fetchLatest = async () => {
-            try {
-                const res = await api.get('/alerts/latest');
-                if (isMounted && res.data) {
-                    setLiveFeed(res.data.slice(0, 10));
-                }
-            } catch (err) {
-                console.error("Initial alerts fetch failed", err);
-            }
-        };
+        setLiveFeed(prev => [alert, ...prev].slice(0, 50));
+        setNewAlertTrigger(true);
 
-        fetchLatest();
+        setTimeout(() => setNewAlertTrigger(false), 3000);
 
-        const handleNewAlert = (alert) => {
-            if (!isMounted) return;
+        if (feedRef.current) {
+            feedRef.current.scrollTop = 0;
+        }
+    };
 
-            setLiveFeed(prev => [alert, ...prev].slice(0, 50));
-            setNewAlertTrigger(true);
+    webSocketService.subscribe('/topic/alerts', handleNewAlert);
 
-            setTimeout(() => setNewAlertTrigger(false), 3000);
+    return () => {
+        isMounted = false;
+        webSocketService.unsubscribe('/topic/alerts');
+    };
 
-            if (feedRef.current) {
-                feedRef.current.scrollTop = 0;
-            }
-        };
-
-        webSocketService.subscribe('/topic/alerts', handleNewAlert);
-
-        return () => {
-            isMounted = false;
-            webSocketService.unsubscribe('/topic/alerts');
-        };
-
-    }, []);
-
+}, []);
     // =========================================================
     // SIMULATION
     // =========================================================

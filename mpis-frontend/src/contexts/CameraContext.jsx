@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import api from '../api/axios';
+import api, { silentApi } from '../api/axios';
 
 const CameraContext = createContext();
 
@@ -86,8 +86,8 @@ export const CameraProvider = ({ children }) => {
             formData.append("file", blob, "frame.jpg");
 
             try {
-                // Silently push frames to AI engine across all tabs
-                const res = await api.post("/forensic/match-image", formData);
+                // Silently push frames to AI engine across all tabs without triggering toast errors
+                const res = await silentApi.post("/forensic/match-image", formData);
                 if (res.data?.status === "CONFIDENT_MATCH") {
                     console.log("✅ GLOBAL MATCH DETECTED:", res.data);
                     

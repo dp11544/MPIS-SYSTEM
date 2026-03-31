@@ -12,6 +12,7 @@ import Analytics from './pages/Analytics';
 import DeploymentMap from './pages/DeploymentMap';
 import OfficialCaseFile from './pages/OfficialCaseFile';
 import Protection from './components/common/Protection';
+import { CameraProvider } from './contexts/CameraContext';
 import ToastContainer from './components/common/ToastContainer';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
@@ -24,7 +25,7 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     {/* Case File Page - Protected but standalone (no Layout) */}
                     <Route path="/case-file" element={<Protection><OfficialCaseFile /></Protection>} />
-                    <Route element={<Protection><Layout /></Protection>}>
+                    <Route element={<Protection><CameraProvider><Layout /></CameraProvider></Protection>}>
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/register" element={<RegisterCase />} />

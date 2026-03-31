@@ -4,6 +4,7 @@ import AlertCard from '../components/widgets/AlertCard';
 import api from '../api/axios';
 import webSocketService from '../services/WebSocketService';
 import toast from '../utils/toast';
+import { useCamera } from '../contexts/CameraContext';
 
 const LiveAlerts = () => {
     const [liveFeed, setLiveFeed] = useState([]);
@@ -12,90 +13,14 @@ const LiveAlerts = () => {
     const feedRef = useRef(null);
     const videoRef = useRef(null);
 
-    // =========================================================
-    // 🔥 START CAMERA (REAL LIVE FEED)
-    // =========================================================
+    const { cameraStream } = useCamera();
+
+    // Attach global camera stream to the local screen if available
     useEffect(() => {
-        const startCamera = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment" }
-                });
-                videoRef.current.srcObject = stream;
-            } catch (err) {
-                console.error("Camera error:", err);
-                toast.error("Camera access denied");
-            }
-        };
-
-        startCamera();
-    }, []);
-
-    // =========================================================
-    // 🔥 AUTO MATCH LOOP (EVERY 2 SEC)
-    // =========================================================
-    let isProcessing = false;
-
-    useEffect(() => {
-        const interval = setInterval(async () => {
-            if (isProcessing) return;
-
-            isProcessing = true;
-            await captureAndMatch();
-            isProcessing = false;
-
-        }, 2000);
-
-        return () => clearInterval(interval);
-    }, []);
-
-    const captureAndMatch = async () => {
-        if (!videoRef.current || videoRef.current.videoWidth === 0) return;
-
-        const canvas = document.createElement("canvas");
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
-
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(videoRef.current, 0, 0);
-
-        canvas.toBlob(async (blob) => {
-            if (!blob) return;
-
-            const formData = new FormData();
-            formData.append("file", blob, "frame.jpg");
-
-            try {
-                const res = await api.post("/forensic/match-image", formData);
-
-                const data = res.data;
-
-                if (!data || !data.status) {
-                    console.warn("⚠️ Invalid response:", data);
-                    return;
-                }
-
-                if (data.status === "CONFIDENT_MATCH") {
-                    console.log("✅ MATCH FOUND:", data);
-
-                    // 🔥 PUSH TO BACKEND SO IT CREATES AN ALERT + BROADCASTS IT
-                    api.post('/alerts', {
-                        personId: data.personId || "UNKNOWN",
-                        personName: data.personName || "Unknown Match",
-                        similarityScore: data.similarity || 0.90,
-                        cameraId: "WEB_FRONTEND"
-                    }).catch(err => console.error("Failed to ingest alert:", err));
-
-                } else {
-                    console.log("ℹ️ STATUS:", data.status);
-                }
-
-            } catch (err) {
-                console.error("❌ REAL ERROR:", err);
-            }
-
-        }, "image/jpeg");
-    };
+        if (videoRef.current && cameraStream) {
+            videoRef.current.srcObject = cameraStream;
+        }
+    }, [cameraStream]);
 
     useEffect(() => {
 

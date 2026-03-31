@@ -1,0 +1,122 @@
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import api from '../api/axios';
+
+const CameraContext = createContext();
+
+export const useCamera = () => useContext(CameraContext);
+
+export const CameraProvider = ({ children }) => {
+    const [isCameraActive, setIsCameraActive] = useState(false);
+    const [cameraStream, setCameraStream] = useState(null);
+    const videoRef = useRef(null);
+    const intervalRef = useRef(null);
+
+    // Initialize the hidden video element
+    useEffect(() => {
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true;
+        video.style.display = 'none'; // Keep hidden
+        document.body.appendChild(video);
+        videoRef.current = video;
+
+        return () => {
+            if (video) document.body.removeChild(video);
+        };
+    }, []);
+
+    // Start Webcam globally
+    const startCamera = async () => {
+        if (isCameraActive || cameraStream) return;
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 1280, height: 720, facingMode: "environment" }
+            });
+            
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+            setCameraStream(stream);
+            setIsCameraActive(true);
+
+            // Start sending frames globally
+            if (!intervalRef.current) {
+                intervalRef.current = setInterval(captureAndMatch, 2000);
+            }
+        } catch (err) {
+            console.error("❌ Failed to access global webcam:", err);
+            setIsCameraActive(false);
+        }
+    };
+
+    // Stop Webcam
+    const stopCamera = () => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+        }
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+        setCameraStream(null);
+        setIsCameraActive(false);
+    };
+
+    // Global AI Frame Extraction & Transmission
+    const captureAndMatch = async () => {
+        if (!videoRef.current || videoRef.current.videoWidth === 0) return;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(videoRef.current, 0, 0);
+
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
+            const formData = new FormData();
+            formData.append("file", blob, "frame.jpg");
+
+            try {
+                // Silently push frames to AI engine across all tabs
+                const res = await api.post("/forensic/match-image", formData);
+                if (res.data?.status === "CONFIDENT_MATCH") {
+                    console.log("✅ GLOBAL MATCH DETECTED:", res.data);
+                    
+                    // Ingest alert directly to backend pipeline
+                    api.post('/alerts', {
+                        personId: res.data.personId || "UNKNOWN",
+                        personName: res.data.personName || "Unknown Match",
+                        similarityScore: res.data.similarity || 0.90,
+                        cameraId: "WEB_FRONTEND"
+                    }).catch(err => console.error("Global alert ingestion failed:", err));
+                }
+            } catch (err) {
+                // Keep catching silently so background process doesn't explode
+                // console.error("Global capture error:", err);
+            }
+        }, "image/jpeg");
+    };
+
+    // Automatically keep it running once user logs in or mounts layout
+    useEffect(() => {
+        startCamera();
+        return () => stopCamera();
+        // eslint-disable-next-line
+    }, []);
+
+    const value = {
+        isCameraActive,
+        cameraStream,
+        startCamera,
+        stopCamera
+    };
+
+    return (
+        <CameraContext.Provider value={value}>
+            {children}
+        </CameraContext.Provider>
+    );
+};

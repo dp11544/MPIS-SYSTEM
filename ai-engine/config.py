@@ -43,8 +43,8 @@ ONNX_PROVIDER         = "CPUExecutionProvider"
 # SIMILARITY SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-SIMILARITY_THRESHOLD  = 0.5
-UNCERTAINTY_MARGIN    = 0.10
+SIMILARITY_THRESHOLD  = 0.40
+UNCERTAINTY_MARGIN    = 0.05
 SIMILARITY_MAX        = 1.0
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -17,7 +17,11 @@ export const CameraProvider = ({ children }) => {
         video.autoplay = true;
         video.playsInline = true;
         video.muted = true;
-        video.style.display = 'none'; // Keep hidden
+        video.style.position = 'absolute';
+        video.style.top = '-9999px';
+        video.style.visibility = 'hidden';
+        video.style.width = '1280px';
+        video.style.height = '720px';
         document.body.appendChild(video);
         videoRef.current = video;
 
@@ -124,7 +128,7 @@ export const CameraProvider = ({ children }) => {
                 // Keep catching silently so background process doesn't explode
                 // console.error("Global capture error:", err);
             }
-        }, "image/jpeg");
+        }, "image/jpeg", 0.90);
     };
 
     // Automatically keep it running once user logs in or mounts layout

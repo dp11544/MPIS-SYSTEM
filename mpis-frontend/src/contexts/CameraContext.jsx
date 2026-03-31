@@ -112,7 +112,7 @@ export const CameraProvider = ({ children }) => {
                     
                     ctx.fillStyle = "#aaaaaa";
                     ctx.font = "14px monospace";
-                    ctx.fillText(`TIMESTAMP: ${new Date().toISOString()}`, 25, 135);
+                    ctx.fillText(`TIMESTAMP: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 25, 135);
                     
                     const evidenceBase64 = canvas.toDataURL("image/jpeg", 0.65);
 

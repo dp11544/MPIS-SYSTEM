@@ -87,7 +87,7 @@ const AlertCard = ({ alert, isNew }) => {
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <Clock size={14} />
-                    <span>{new Date(alert.detectedAt.endsWith('Z') ? alert.detectedAt : alert.detectedAt + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    <span>{new Date(alert.detectedAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                 </div>
                 {isNew && (
                     <span style={{ color: 'var(--status-alert)', fontSize: '0.75rem', animation: 'pulse 1.5s infinite' }}>● JUST NOW</span>

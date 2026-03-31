@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Video, AlertTriangle, Shield, Radio, Wifi, WifiOff, RefreshCw, Target, Crosshair, Layers, ChevronDown } from 'lucide-react';
+import { Map as MapIcon, Video, AlertTriangle, Shield, Radio, Wifi, WifiOff, RefreshCw, Target, Crosshair, Layers, ChevronDown, Navigation } from 'lucide-react';
 import api from '../api/axios';
 import webSocketService from '../services/WebSocketService';
 
@@ -131,14 +131,32 @@ const DeploymentMap = () => {
     const [error, setError] = useState(null);
     const [mapCenter, setMapCenter] = useState(BHIMAVARAM_CENTER);
     const [selectedAlert, setSelectedAlert] = useState(null);
-    const [mapStyle, setMapStyle] = useState('terrain');
+    const [mapStyle, setMapStyle] = useState('hybrid');
     const [showLayerMenu, setShowLayerMenu] = useState(false);
 
     const MAP_STYLES = {
-        terrain: { name: 'Terrain (Default)', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles © Esri' },
-        satellite: { name: 'Satellite (2D HD)', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles © Esri' },
-        tactical: { name: 'Tactical Dark (2D)', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '© CARTO' },
-        street: { name: 'Street Level', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '© OpenStreetMap' }
+        hybrid: { name: 'Google Hybrid', url: 'http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}', attribution: '© Google' },
+        roadmap: { name: 'Google Streets', url: 'http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}', attribution: '© Google' },
+        satellite: { name: 'Google Satellite', url: 'http://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}', attribution: '© Google' },
+        terrain: { name: 'Google Terrain', url: 'http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}', attribution: '© Google' },
+        tactical: { name: 'Tactical Matrix', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '© CARTO' }
+    };
+
+    const handleLocateMe = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    setMapCenter([latitude, longitude]);
+                },
+                (err) => {
+                    console.warn('Geolocation error:', err);
+                    alert("Please enable location services in your browser to use this feature.");
+                }
+            );
+        } else {
+            alert("Geolocation is not supported by your browser.");
+        }
     };
 
     const alertTimeoutsRef = useRef({});
@@ -292,9 +310,10 @@ const DeploymentMap = () => {
                         center={BHIMAVARAM_CENTER}
                         zoom={14}
                         style={{ height: '100%', width: '100%' }}
-                        zoomControl={true}
+                        zoomControl={false}
                         attributionControl={false}
                     >
+                        <ZoomControl position="bottomright" />
                         <MapController center={hasAlerts ? mapCenter : null} zoom={hasAlerts ? 16 : null} />
 
                         {/* Dynamic map tile */}
@@ -399,33 +418,48 @@ const DeploymentMap = () => {
                         )}
                     </MapContainer>
 
-                    {/* Layer Switcher Dropdown */}
-                    <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000 }}>
+                    {/* Layer Switcher & Location Dropdown */}
+                    <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000, display: 'flex', gap: '10px' }}>
+                        
+                        {/* Locate Me */}
                         <button 
-                            onClick={() => setShowLayerMenu(!showLayerMenu)}
+                            onClick={handleLocateMe}
+                            title="Show My Location"
                             style={{ background: 'rgba(5,15,30,0.9)', border: '1px solid rgba(255,255,255,0.2)', padding: '8px 14px', borderRadius: '8px', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.5)', transition: 'all 0.2s' }}
                             onMouseOver={e => e.currentTarget.style.background = 'rgba(10,30,50,0.95)'}
                             onMouseOut={e => e.currentTarget.style.background = 'rgba(5,15,30,0.9)'}
                         >
-                            <Layers size={16} color="var(--brand-blue)" /> {MAP_STYLES[mapStyle].name} <ChevronDown size={14} />
+                            <Navigation size={16} color="#00c864" /> Location
                         </button>
-                        
-                        {showLayerMenu && (
-                            <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'rgba(5,15,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', overflow: 'hidden', width: '200px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)' }}>
-                                {Object.entries(MAP_STYLES).map(([key, style]) => (
-                                    <div 
-                                        key={key}
-                                        onClick={() => { setMapStyle(key); setShowLayerMenu(false); }}
-                                        style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'var(--font-mono, monospace)', color: mapStyle === key ? 'var(--brand-blue)' : 'white', background: mapStyle === key ? 'rgba(56, 189, 248, 0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}
-                                        onMouseOver={e => e.currentTarget.style.background = mapStyle === key ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255,255,255,0.05)'}
-                                        onMouseOut={e => e.currentTarget.style.background = mapStyle === key ? 'rgba(56, 189, 248, 0.1)' : 'transparent'}
-                                    >
-                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: mapStyle === key ? 'var(--brand-blue)' : 'transparent', marginRight: '8px' }}></div>
-                                        {style.name}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+
+                        {/* Layer Toggler */}
+                        <div style={{ position: 'relative' }}>
+                            <button 
+                                onClick={() => setShowLayerMenu(!showLayerMenu)}
+                                style={{ background: 'rgba(5,15,30,0.9)', border: '1px solid rgba(255,255,255,0.2)', padding: '8px 14px', borderRadius: '8px', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.5)', transition: 'all 0.2s' }}
+                                onMouseOver={e => e.currentTarget.style.background = 'rgba(10,30,50,0.95)'}
+                                onMouseOut={e => e.currentTarget.style.background = 'rgba(5,15,30,0.9)'}
+                            >
+                                <Layers size={16} color="var(--brand-blue)" /> {MAP_STYLES[mapStyle].name} <ChevronDown size={14} />
+                            </button>
+                            
+                            {showLayerMenu && (
+                                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'rgba(5,15,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', overflow: 'hidden', width: '200px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)' }}>
+                                    {Object.entries(MAP_STYLES).map(([key, style]) => (
+                                        <div 
+                                            key={key}
+                                            onClick={() => { setMapStyle(key); setShowLayerMenu(false); }}
+                                            style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'var(--font-mono, monospace)', color: mapStyle === key ? 'var(--brand-blue)' : 'white', background: mapStyle === key ? 'rgba(56, 189, 248, 0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}
+                                            onMouseOver={e => e.currentTarget.style.background = mapStyle === key ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255,255,255,0.05)'}
+                                            onMouseOut={e => e.currentTarget.style.background = mapStyle === key ? 'rgba(56, 189, 248, 0.1)' : 'transparent'}
+                                        >
+                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: mapStyle === key ? 'var(--brand-blue)' : 'transparent', marginRight: '8px' }}></div>
+                                            {style.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Map overlay: Legend */}
@@ -552,9 +586,11 @@ const DeploymentMap = () => {
                 .leaflet-popup-content-wrapper { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
                 .leaflet-popup-tip { display: none !important; }
                 .leaflet-popup-content { margin: 0 !important; }
-                .leaflet-control-zoom { background: rgba(5,15,30,0.9) !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; }
-                .leaflet-control-zoom a { background: transparent !important; color: white !important; border: none !important; }
-                .leaflet-control-zoom a:hover { background: rgba(255,255,255,0.1) !important; }
+                
+                /* Styled Zoom Controls */
+                .leaflet-control-zoom { border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important; }
+                .leaflet-control-zoom a { background: rgba(5,15,30,0.9) !important; color: white !important; font-size: 20px !important; line-height: 28px !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; transition: all 0.2s !important; }
+                .leaflet-control-zoom a:hover { background: rgba(10,30,50,0.95) !important; color: #38bdf8 !important; }
             ` }} />
         </div>
     );

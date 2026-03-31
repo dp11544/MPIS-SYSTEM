@@ -920,15 +920,33 @@ const Dashboard = () => {
             // Find camera matching the alert's cameraId
             const camera = camerasRef.find(c => c.cameraId === alert.cameraId);
             if (!camera || camera.latitude == null || camera.longitude == null) {
-                // Fallback random position with default HQ coordinates
+                // Fallback deterministic position based on cameraId so a stationary camera stays in one place
+                let fixedLat = 16.539861;
+                let fixedLng = 81.532004;
+                let xPos = 50; 
+                let yPos = 50;
+                
+                if (alert.cameraId) {
+                    let hash = 0;
+                    for (let i = 0; i < alert.cameraId.length; i++) {
+                        hash = alert.cameraId.charCodeAt(i) + ((hash << 5) - hash);
+                    }
+                    // Keep within inner circle reliably
+                    xPos = 35 + Math.abs(hash % 30);
+                    yPos = 35 + Math.abs((hash >> 4) % 30);
+                    
+                    fixedLat += (hash % 100) * 0.0001;
+                    fixedLng += ((hash >> 4) % 100) * 0.0001;
+                }
+                
                 return {
                     id: `alert-${alert.id || Date.now()}-${Math.random()}`,
-                    x: 20 + Math.random() * 60,
-                    y: 20 + Math.random() * 60,
+                    x: xPos,
+                    y: yPos,
                     personName: alert.personName || 'Unknown',
                     similarity: alert.similarity || 0,
-                    lat: 16.539861 + (Math.random() * 0.02 - 0.01),
-                    lng: 81.532004 + (Math.random() * 0.02 - 0.01),
+                    lat: fixedLat,
+                    lng: fixedLng,
                     timestamp: Date.now()
                 };
             }

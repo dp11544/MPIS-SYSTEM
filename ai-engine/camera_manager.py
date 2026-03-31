@@ -43,6 +43,9 @@ class CameraStream:
         self.source = source
         self.camera_id = camera_id
 
+        from multi_frame_tracker import MultiFrameTracker
+        self.tracker = MultiFrameTracker(camera_id=camera_id)
+
         self._running = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -138,21 +141,31 @@ class CameraStream:
 
             if result.get("status") == "MATCH":
 
-                logger.info(
-                    "[MATCH] %s (%.2f)",
-                    result.get("personName"),
-                    result.get("similarity")
+                confirmed = self.tracker.update(
+                    slot_id=0,
+                    centroid=(0, 0),
+                    person_name=result.get("personName"),
+                    similarity=result.get("similarity", 0)
                 )
 
-                evidence_path = self._save_evidence(frame)
+                if confirmed:
+                    logger.info(
+                        "[CONFIRMED MATCH] %s (%.2f)",
+                        result.get("personName"),
+                        result.get("similarity")
+                    )
 
-                alert_service_instance.send_alert(
-                    person_id=result.get("personId", ""),
-                    person_name=result.get("personName", ""),
-                    camera_id=self.camera_id,
-                    similarity=result.get("similarity", 0),
-                    evidence_image=evidence_path,
-                )
+                    evidence_path = self._save_evidence(frame)
+
+                    alert_service_instance.send_alert(
+                        person_id=result.get("personId", ""),
+                        person_name=result.get("personName", ""),
+                        camera_id=self.camera_id,
+                        similarity=result.get("similarity", 0),
+                        evidence_image=evidence_path,
+                    )
+            else:
+                self.tracker.update(slot_id=0, centroid=(0, 0), person_name=None, similarity=0)
 
         except Exception as e:
             logger.error("[CLOUD ERROR] %s", e)

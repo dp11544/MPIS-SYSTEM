@@ -51,6 +51,9 @@ class AlertService:
         self._total_sent = 0
         self._total_failed = 0
 
+        import concurrent.futures
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+
         logger.info("[ALERT SERVICE] Initialised endpoint=%s", BACKEND_ALERT_URL)
 
     # ----------------------------------------------------------
@@ -67,11 +70,10 @@ class AlertService:
         🔥 NON-BLOCKING ALERT (IMPORTANT FIX)
         """
 
-        threading.Thread(
-            target=self._send_alert_internal,
-            args=(person_id, person_name, camera_id, similarity, evidence_image),
-            daemon=True,
-        ).start()
+        self.executor.submit(
+            self._send_alert_internal,
+            person_id, person_name, camera_id, similarity, evidence_image
+        )
 
     # ----------------------------------------------------------
 

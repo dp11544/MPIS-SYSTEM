@@ -71,6 +71,9 @@ export const CameraProvider = ({ children }) => {
     };
 
     const isProcessingRef = useRef(false);
+    
+    // Generates a unique Camera ID per session to ensure distinct tracing via backend Caffeine deduplication
+    const activeCameraId = useRef(`WEB_FRONTEND_${Math.random().toString(36).substring(2, 10).toUpperCase()}`);
 
     // Global AI Frame Extraction & Transmission
     const captureAndMatch = async () => {
@@ -111,12 +114,6 @@ export const CameraProvider = ({ children }) => {
                     const matchId = res.data.personId || "N/A";
                     const simScore = res.data.similarity || 0.0;
                     
-                    // 🧠 ALERT INTEGRITY: Front-end sanity check to prevent processing bad ghosts
-                    if (simScore < 0.40) {
-                        console.warn(`[SECURITY] Discarding AI false positive block in frontend ${simScore}`);
-                        return;
-                    }
-
                     // Stamp the evidence image on the canvas
                     ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
                     ctx.fillRect(10, 10, Math.min(w - 20, 520), 140);
@@ -139,19 +136,19 @@ export const CameraProvider = ({ children }) => {
                     // ⚡ PAYLOAD OPTIMIZATION: Extremely compressed JPEG to prevent MongoDB bloat (0.40)
                     const evidenceBase64 = canvas.toDataURL("image/jpeg", 0.40);
 
-                    // Zero Trust Unified Ingestion API
+                    // Zero Trust Unified Ingestion API - Backend is the sole source of truth
                     await api.post('/alerts', {
                         personId: matchId,
                         personName: matchName,
                         similarityScore: simScore,
-                        cameraId: "WEB_FRONTEND",
+                        cameraId: activeCameraId.current,
                         evidenceImage: evidenceBase64,
                         detectedAt: Date.now()
                     });
                 }
             } catch (err) {
-                // 🔁 FAIL-SAFE: Gracefully log rather than silently dying, but don't toast the user screen repeatedly.
-                console.warn("[SYSTEM LOG] Background inference/ingestion failure. Retrying naturally next interval.", err.message);
+                // 🔁 FAIL-SAFE: Gracefully log rather than silently dying
+                console.warn("[SYSTEM LOG] Background inference/ingestion failure. Retrying naturally next interval.");
             } finally {
                 // 🔥 CRITICAL: Guarantee lock is released regardless of success or horrific failure.
                 isProcessingRef.current = false; 

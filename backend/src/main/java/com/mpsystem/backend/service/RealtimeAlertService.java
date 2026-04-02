@@ -21,17 +21,21 @@ public class RealtimeAlertService {
         private final PersonTrackingService personTrackingService;
         private final EvidenceHashService evidenceHashService;
         private final WebSocketBroadcastService webSocketBroadcastService;
+        private final ImageStorageService imageStorageService;
 
         // ================= CONFIG =================
-        @Value("${mpis.ai.similarity-threshold}")
+        @Value("${mpis.ai.similarity-threshold:0.40}")
         private double MIN_SIMILARITY_THRESHOLD;
 
-        @Value("${mpis.cache.dedup-window-seconds}")
+        @Value("${mpis.cache.dedup-window-seconds:5}")
         private long DEDUP_WINDOW_SECONDS;
+
+        // 🛡️ LOAD CONTROL
+        private final java.util.concurrent.atomic.AtomicInteger activeProcessingTasks = new java.util.concurrent.atomic.AtomicInteger(0);
+        private static final int MAX_CONCURRENT_ALERTS = 50;
         // ==========================================
 
         // ================= DEDUPLICATION CACHE =================
-        // Thread-safe TTL cache: evicts alerts after configured window to prevent spam
         private com.github.benmanes.caffeine.cache.Cache<String, Boolean> recentAlertsCache;
 
         @PostConstruct
@@ -41,80 +45,75 @@ public class RealtimeAlertService {
                                 .maximumSize(10_000)
                                 .build();
         }
-        // =======================================================
 
         /**
-         * Process CCTV alerts asynchronously.
-         * SAFE for high-FPS CCTV streams.
+         * Process CCTV alerts asynchronously with strict thread-pool safety and backpressure.
          */
         @Async("alertExecutor")
         public void processRealtimeAlert(RealtimeAlertRequest request) {
 
-                // 1️⃣ HARD THRESHOLD GATE
-                if (request.getSimilarity() < MIN_SIMILARITY_THRESHOLD) {
-                        log.debug(
-                                        "Alert ignored (low similarity={} for personId={})",
-                                        request.getSimilarity(),
-                                        request.getPersonId());
+                // 🛡️ BACKPRESSURE / OVERLOAD PROTECTION
+                if (activeProcessingTasks.get() >= MAX_CONCURRENT_ALERTS) {
+                        log.warn("🚨 [BACKPRESSURE] Alert queue saturated ({} pending). Dropping trace for {}", MAX_CONCURRENT_ALERTS, request.getCameraId());
                         return;
                 }
 
-                // 2️⃣ TEMPORAL DEDUPLICATION (Caffeine Cache - Thread Safe & Fast)
-                String dedupKey = request.getPersonId() + "_" + request.getCameraId();
-                if (recentAlertsCache.getIfPresent(dedupKey) != null) {
-                        log.debug(
-                                        "Duplicate alert ignored via Cache (personId={}, cameraId={})",
-                                        request.getPersonId(),
-                                        request.getCameraId());
-                        return;
-                }
-
-                // Register alert in cache to block subsequent matches for 5 seconds
-                recentAlertsCache.put(dedupKey, true);
+                activeProcessingTasks.incrementAndGet();
 
                 try {
-                        // 3️⃣ BUILD ALERT
-                        Alert alert = new Alert(
-                                        request.getPersonId(),
-                                        request.getPersonName(),
-                                        request.getSimilarity(),
-                                        ConfidenceLevel.valueOf(request.getConfidenceLevel()),
-                                        "CCTV",
-                                        request.getCameraId(),
-                                        request.getAlgorithmVersion(),
-                                        request.getModelUsed(),
-                                        AlertState.DETECTED);
+                        if (request.getSimilarity() < MIN_SIMILARITY_THRESHOLD) return;
 
-                        if (request.getEvidenceImage() != null && !request.getEvidenceImage().isEmpty()) {
-                                alert.setEvidenceImagePath(request.getEvidenceImage());
-                        }
+                        String dedupKey = request.getPersonId() + "_" + request.getCameraId();
+                        if (recentAlertsCache.getIfPresent(dedupKey) != null) return;
+                        recentAlertsCache.put(dedupKey, true);
 
-                        // 4️⃣ STORE ALERT
-                        Alert savedAlert = alertRepository.save(alert);
-
-                        // 🔐 BLOCKCHAIN-READY EVIDENCE HASHING (Silently catch hashing fails)
                         try {
-                                evidenceHashService.generateEvidenceHash(savedAlert);
-                        } catch (Exception hashErr) {
-                                log.error("⚠️ [SECURITY] Blockchain evidence hashing failed for {}", savedAlert.getId(), hashErr);
+                                // 💾 PAYLOAD OPTIMIZATION: Extract heavy base64 to File System and fetch URL
+                                String evidenceUrl = imageStorageService.storeEvidenceImage(request.getEvidenceImage());
+
+                                Alert alert = new Alert(
+                                                request.getPersonId(),
+                                                request.getPersonName(),
+                                                request.getSimilarity(),
+                                                ConfidenceLevel.valueOf(request.getConfidenceLevel()),
+                                                "CCTV",
+                                                request.getCameraId(),
+                                                request.getAlgorithmVersion(),
+                                                request.getModelUsed(),
+                                                AlertState.DETECTED);
+
+                                // Guarantee the database ONLY receives the URL reference, never the bloated Base64 string natively
+                                if (evidenceUrl != null) {
+                                        alert.setEvidenceImagePath(evidenceUrl);
+                                }
+
+                                Alert savedAlert = alertRepository.save(alert);
+
+                                try {
+                                        evidenceHashService.generateEvidenceHash(savedAlert);
+                                } catch (Exception hashErr) {
+                                        log.error("⚠️ [SECURITY] Blockchain evidence hashing failed for {}", savedAlert.getId(), hashErr);
+                                }
+
+                                log.info("✅ Realtime alert secured (personId={}, cameraId={}, similarity={})",
+                                                savedAlert.getPersonId(), savedAlert.getCameraId(), savedAlert.getSimilarity());
+
+                                personTrackingService.handleNewAlert(savedAlert);
+                                
+                                // 🔌 WEBSOCKET FAIL-SAFE FIX
+                                try {
+                                        webSocketBroadcastService.broadcastAlert(savedAlert);
+                                } catch (Exception wsErr) {
+                                        log.warn("⚠️ [NETWORK] WebSocket broadcast failed, but DB saved successfully. Continuing flow.", wsErr);
+                                }
+
+                        } catch (Exception e) {
+                                log.error("💥 [SYSTEM FAILURE] Database persistence failed for alert {}. Releasing cooldown lock.", request.getPersonId(), e);
+                                recentAlertsCache.invalidate(dedupKey);
                         }
-
-                        log.info(
-                                        "✅ Realtime alert secured (personId={}, cameraId={}, similarity={})",
-                                        savedAlert.getPersonId(),
-                                        savedAlert.getCameraId(),
-                                        savedAlert.getSimilarity());
-
-                        // 5️⃣ MULTI-CAMERA PERSON TRACKING
-                        personTrackingService.handleNewAlert(savedAlert);
-
-                        // 6️⃣ REAL-TIME WEBSOCKET PUSH
-                        webSocketBroadcastService.broadcastAlert(savedAlert);
-
-                } catch (Exception e) {
-                        log.error("💥 [SYSTEM FAILURE] Database persistence failed for alert {}. Releasing cooldown lock.", request.getPersonId(), e);
-                        // Release the strict deduplication cache lock immediately on failure so the system can seamlessly retry
-                        recentAlertsCache.invalidate(dedupKey);
+                } finally {
+                        // Ensure async thread lock is always released safely
+                        activeProcessingTasks.decrementAndGet();
                 }
         }
 }

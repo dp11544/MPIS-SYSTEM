@@ -25,4 +25,6 @@ public class RealtimeAlertRequest {
 
     @NotNull
     private Long detectedAt;
+
+    private String evidenceImage;
 }

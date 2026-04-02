@@ -11,7 +11,7 @@ class WebSocketService {
     constructor() {
         this.client = null;
         this.subscriptions = {};
-        this.pendingSubscriptions = {};
+        this.pendingSubscriptions = {}; // e.g., { '/topic/alerts': { 'header': cb, 'dashboard': cb } }
         this._connected = false;
         this._connecting = false;
 
@@ -43,8 +43,8 @@ class WebSocketService {
 
                 this._notifyListeners(true);
 
-                Object.entries(this.pendingSubscriptions).forEach(([topic, cb]) => {
-                    this._subscribeNow(topic, cb);
+                Object.keys(this.pendingSubscriptions).forEach((topic) => {
+                    this._subscribeNow(topic);
                 });
             },
 
@@ -69,7 +69,7 @@ class WebSocketService {
     }
 
     // =========================================================
-    // 🔥 LISTENER SYSTEM (FIX FOR YOUR ERROR)
+    // 🔥 LISTENER SYSTEM
     // =========================================================
     setConnectionListener(callback) {
         if (!callback) return;
@@ -94,7 +94,7 @@ class WebSocketService {
     // =========================================================
     // 🔥 SUBSCRIBE
     // =========================================================
-    _subscribeNow(topic, callback) {
+    _subscribeNow(topic) {
         if (!this.client?.connected) return;
 
         if (this.subscriptions[topic]) return;
@@ -105,7 +105,17 @@ class WebSocketService {
             if (!message.body) return;
 
             try {
-                callback(JSON.parse(message.body));
+                const parsedBody = JSON.parse(message.body);
+                // Dispatch to all registered listeners for this topic
+                if (this.pendingSubscriptions[topic]) {
+                    Object.values(this.pendingSubscriptions[topic]).forEach((cb) => {
+                        try {
+                            cb(parsedBody);
+                        } catch (err) {
+                            console.error('[WS] Component callback error', err);
+                        }
+                    });
+                }
             } catch (e) {
                 console.error('[WS] JSON parse error', e);
             }
@@ -114,27 +124,39 @@ class WebSocketService {
         this.subscriptions[topic] = sub;
     }
 
-    subscribe(topic, callback) {
-        this.pendingSubscriptions[topic] = callback;
+    subscribe(topic, id, callback) {
+        if (!this.pendingSubscriptions[topic]) {
+            this.pendingSubscriptions[topic] = {};
+        }
+        
+        // Guarantee this component gets its callback stored securely
+        this.pendingSubscriptions[topic][id] = callback;
 
         if (!this.client) {
             this.connect();
         }
 
-        this._subscribeNow(topic, callback);
+        this._subscribeNow(topic);
     }
 
     // =========================================================
     // 🔥 UNSUBSCRIBE
     // =========================================================
-    unsubscribe(topic) {
-        delete this.pendingSubscriptions[topic];
-
-        if (this.subscriptions[topic]) {
-            try {
-                this.subscriptions[topic].unsubscribe();
-            } catch {}
-            delete this.subscriptions[topic];
+    unsubscribe(topic, id) {
+        if (this.pendingSubscriptions[topic]) {
+            delete this.pendingSubscriptions[topic][id];
+            
+            // If no more components are listening to this topic, sever the STOMP connection
+            if (Object.keys(this.pendingSubscriptions[topic]).length === 0) {
+                delete this.pendingSubscriptions[topic];
+                
+                if (this.subscriptions[topic]) {
+                    try {
+                        this.subscriptions[topic].unsubscribe();
+                    } catch {}
+                    delete this.subscriptions[topic];
+                }
+            }
         }
     }
 

@@ -1001,7 +1001,7 @@ const Dashboard = () => {
             setTelemetry({ cpu: Math.min(99, telemetry.cpu + 20), gpu: 95, mem: Math.min(90, telemetry.mem + 5) });
         };
 
-        webSocketService.subscribe('/topic/alerts', handleNewAlert);
+        webSocketService.subscribe('/topic/alerts', 'dashboard', handleNewAlert);
         webSocketService.setConnectionListener(setWsConnected, 'dashboard');
 
         // Random telemetry fluctuations
@@ -1020,7 +1020,7 @@ const Dashboard = () => {
         }, 1000);
 
         return () => {
-            webSocketService.unsubscribe('/topic/alerts');
+            webSocketService.unsubscribe('/topic/alerts', 'dashboard');
             webSocketService.setConnectionListener(null, 'dashboard');
             clearInterval(telInterval);
             clearInterval(blipCleanupInterval);

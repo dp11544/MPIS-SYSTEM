@@ -70,34 +70,56 @@ export const CameraProvider = ({ children }) => {
         setIsCameraActive(false);
     };
 
+    const isProcessingRef = useRef(false);
+
     // Global AI Frame Extraction & Transmission
     const captureAndMatch = async () => {
         if (!videoRef.current || videoRef.current.videoWidth === 0) return;
+        if (isProcessingRef.current) return; // Prevent concurrent request flooding
+
+        isProcessingRef.current = true; // Lock
+
+        // ⚡ PAYLOAD OPTIMIZATION: Drastically scale down the extraction width 
+        // to prevent large Base64 blobs from saturating MongoDB limits and slowing network HTTP POSTs.
+        const MAX_OPTIMAL_WIDTH = 800; 
+        const scale = Math.min(1, MAX_OPTIMAL_WIDTH / videoRef.current.videoWidth);
+        const w = videoRef.current.videoWidth * scale;
+        const h = videoRef.current.videoHeight * scale;
 
         const canvas = document.createElement("canvas");
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
+        canvas.width = w;
+        canvas.height = h;
         const ctx = canvas.getContext("2d");
-        ctx.drawImage(videoRef.current, 0, 0);
+        ctx.drawImage(videoRef.current, 0, 0, w, h);
 
+        // Compress extraction blob for rapid AI Inference bandwidth
         canvas.toBlob(async (blob) => {
-            if (!blob) return;
+            if (!blob) {
+                isProcessingRef.current = false;
+                return;
+            }
             const formData = new FormData();
             formData.append("file", blob, "frame.jpg");
 
             try {
-                // Silently push frames to AI engine across all tabs without triggering toast errors
+                // Submit frame cleanly
                 const res = await silentApi.post("/forensic/match-image", formData);
+                
                 if (res.data?.status === "CONFIDENT_MATCH") {
-                    console.log("✅ GLOBAL MATCH DETECTED:", res.data);
                     
                     const matchName = res.data.personName || "UNKNOWN";
                     const matchId = res.data.personId || "N/A";
-                    const simScore = res.data.similarity || 0.90;
+                    const simScore = res.data.similarity || 0.0;
                     
+                    // 🧠 ALERT INTEGRITY: Front-end sanity check to prevent processing bad ghosts
+                    if (simScore < 0.40) {
+                        console.warn(`[SECURITY] Discarding AI false positive block in frontend ${simScore}`);
+                        return;
+                    }
+
                     // Stamp the evidence image on the canvas
                     ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-                    ctx.fillRect(10, 10, 520, 140);
+                    ctx.fillRect(10, 10, Math.min(w - 20, 520), 140);
                     
                     ctx.font = "bold 22px monospace";
                     ctx.fillStyle = "#ff4d4d"; // Red alert text
@@ -114,23 +136,27 @@ export const CameraProvider = ({ children }) => {
                     ctx.font = "14px monospace";
                     ctx.fillText(`TIMESTAMP: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 25, 135);
                     
-                    const evidenceBase64 = canvas.toDataURL("image/jpeg", 0.65);
+                    // ⚡ PAYLOAD OPTIMIZATION: Extremely compressed JPEG to prevent MongoDB bloat (0.40)
+                    const evidenceBase64 = canvas.toDataURL("image/jpeg", 0.40);
 
-                    // Ingest alert directly to backend pipeline
-                    api.post('/alerts', {
+                    // Zero Trust Unified Ingestion API
+                    await api.post('/alerts', {
                         personId: matchId,
                         personName: matchName,
                         similarityScore: simScore,
                         cameraId: "WEB_FRONTEND",
                         evidenceImage: evidenceBase64,
                         detectedAt: Date.now()
-                    }).catch(err => console.error("Global alert ingestion failed:", err));
+                    });
                 }
             } catch (err) {
-                // Keep catching silently so background process doesn't explode
-                // console.error("Global capture error:", err);
+                // 🔁 FAIL-SAFE: Gracefully log rather than silently dying, but don't toast the user screen repeatedly.
+                console.warn("[SYSTEM LOG] Background inference/ingestion failure. Retrying naturally next interval.", err.message);
+            } finally {
+                // 🔥 CRITICAL: Guarantee lock is released regardless of success or horrific failure.
+                isProcessingRef.current = false; 
             }
-        }, "image/jpeg", 0.90);
+        }, "image/jpeg", 0.75); // 0.75 tuning for optimized python analysis
     };
 
     // Automatically keep it running once user logs in or mounts layout

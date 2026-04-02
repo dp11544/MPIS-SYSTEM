@@ -52,11 +52,11 @@ const LiveAlerts = () => {
             }
         };
 
-        webSocketService.subscribe('/topic/alerts', handleNewAlert);
+        webSocketService.subscribe('/topic/alerts', 'live-alerts', handleNewAlert);
 
         return () => {
             isMounted = false;
-            webSocketService.unsubscribe('/topic/alerts');
+            webSocketService.unsubscribe('/topic/alerts', 'live-alerts');
         };
 
     }, []);

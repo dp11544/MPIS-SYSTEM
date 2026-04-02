@@ -6,11 +6,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.mpsystem.backend.service.AIClientService;
-import com.mpsystem.backend.service.WebSocketBroadcastService;
-import com.mpsystem.backend.repository.AlertRepository;
-import com.mpsystem.backend.model.Alert;
-import com.mpsystem.backend.model.ConfidenceLevel;
-import com.mpsystem.backend.model.AlertState;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,17 +18,9 @@ import java.util.Map;
 public class FaceMatchController {
 
     private final AIClientService aiClientService;
-    private final AlertRepository alertRepository;
-    private final WebSocketBroadcastService webSocketBroadcastService;
 
-    public FaceMatchController(
-            AIClientService aiClientService,
-            AlertRepository alertRepository,
-            WebSocketBroadcastService webSocketBroadcastService) {
-
+    public FaceMatchController(AIClientService aiClientService) {
         this.aiClientService = aiClientService;
-        this.alertRepository = alertRepository;
-        this.webSocketBroadcastService = webSocketBroadcastService;
     }
 
     @PostMapping(value = "/match-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -68,42 +55,6 @@ public class FaceMatchController {
             }
 
             String status = String.valueOf(res.get("status"));
-
-            // ================= 🔥 ALERT CREATION =================
-            if ("CONFIDENT_MATCH".equals(status)) {
-
-                try {
-                    double similarity = res.get("similarity") != null
-                            ? Double.parseDouble(res.get("similarity").toString())
-                            : 0.0;
-
-                    ConfidenceLevel confidenceLevel =
-                            similarity >= 0.8 ? ConfidenceLevel.HIGH :
-                            similarity >= 0.6 ? ConfidenceLevel.MEDIUM :
-                            ConfidenceLevel.LOW;
-
-                    Alert alert = new Alert(
-                            (String) res.get("personId"),
-                            (String) res.get("personName"),
-                            similarity,
-                            confidenceLevel,
-                            "CCTV",
-                            "LIVE_CAM",
-                            "v1",
-                            "FaceNet",
-                            AlertState.DETECTED
-                    );
-
-                    Alert saved = alertRepository.save(alert);
-
-                    log.info("✅ ALERT SAVED: {}", saved.getId());
-
-                    webSocketBroadcastService.broadcastAlert(saved);
-
-                } catch (Exception e) {
-                    log.error("❌ ALERT CREATION FAILED", e);
-                }
-            }
 
             // ================= RESPONSE =================
             switch (status) {

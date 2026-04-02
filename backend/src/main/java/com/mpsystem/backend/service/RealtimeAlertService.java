@@ -72,34 +72,49 @@ public class RealtimeAlertService {
                 // Register alert in cache to block subsequent matches for 5 seconds
                 recentAlertsCache.put(dedupKey, true);
 
-                // 3️⃣ BUILD ALERT
-                Alert alert = new Alert(
-                                request.getPersonId(),
-                                request.getPersonName(),
-                                request.getSimilarity(),
-                                ConfidenceLevel.valueOf(request.getConfidenceLevel()),
-                                "CCTV",
-                                request.getCameraId(),
-                                request.getAlgorithmVersion(),
-                                request.getModelUsed(),
-                                AlertState.DETECTED);
+                try {
+                        // 3️⃣ BUILD ALERT
+                        Alert alert = new Alert(
+                                        request.getPersonId(),
+                                        request.getPersonName(),
+                                        request.getSimilarity(),
+                                        ConfidenceLevel.valueOf(request.getConfidenceLevel()),
+                                        "CCTV",
+                                        request.getCameraId(),
+                                        request.getAlgorithmVersion(),
+                                        request.getModelUsed(),
+                                        AlertState.DETECTED);
 
-                // 4️⃣ STORE ALERT
-                Alert savedAlert = alertRepository.save(alert);
+                        if (request.getEvidenceImage() != null && !request.getEvidenceImage().isEmpty()) {
+                                alert.setEvidenceImagePath(request.getEvidenceImage());
+                        }
 
-                // 🔐 BLOCKCHAIN-READY EVIDENCE HASHING
-                evidenceHashService.generateEvidenceHash(savedAlert);
+                        // 4️⃣ STORE ALERT
+                        Alert savedAlert = alertRepository.save(alert);
 
-                log.info(
-                                "Realtime alert stored (personId={}, cameraId={}, similarity={})",
-                                savedAlert.getPersonId(),
-                                savedAlert.getCameraId(),
-                                savedAlert.getSimilarity());
+                        // 🔐 BLOCKCHAIN-READY EVIDENCE HASHING (Silently catch hashing fails)
+                        try {
+                                evidenceHashService.generateEvidenceHash(savedAlert);
+                        } catch (Exception hashErr) {
+                                log.error("⚠️ [SECURITY] Blockchain evidence hashing failed for {}", savedAlert.getId(), hashErr);
+                        }
 
-                // 5️⃣ MULTI-CAMERA PERSON TRACKING
-                personTrackingService.handleNewAlert(savedAlert);
+                        log.info(
+                                        "✅ Realtime alert secured (personId={}, cameraId={}, similarity={})",
+                                        savedAlert.getPersonId(),
+                                        savedAlert.getCameraId(),
+                                        savedAlert.getSimilarity());
 
-                // 6️⃣ REAL-TIME WEBSOCKET PUSH (Asynchronous Thread)
-                webSocketBroadcastService.broadcastAlert(savedAlert);
+                        // 5️⃣ MULTI-CAMERA PERSON TRACKING
+                        personTrackingService.handleNewAlert(savedAlert);
+
+                        // 6️⃣ REAL-TIME WEBSOCKET PUSH
+                        webSocketBroadcastService.broadcastAlert(savedAlert);
+
+                } catch (Exception e) {
+                        log.error("💥 [SYSTEM FAILURE] Database persistence failed for alert {}. Releasing cooldown lock.", request.getPersonId(), e);
+                        // Release the strict deduplication cache lock immediately on failure so the system can seamlessly retry
+                        recentAlertsCache.invalidate(dedupKey);
+                }
         }
 }

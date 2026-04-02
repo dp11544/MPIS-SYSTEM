@@ -233,10 +233,10 @@ const DeploymentMap = () => {
     useEffect(() => {
         webSocketService.setConnectionListener(c => setWsConnected(c), 'deployment-map');
         webSocketService.connect(err => { console.error('WS error:', err); setWsConnected(false); });
-        webSocketService.subscribe('/topic/alerts', handleAlert);
+        webSocketService.subscribe('/topic/alerts', 'deployment-map', handleAlert);
         return () => {
             webSocketService.setConnectionListener(null, 'deployment-map');
-            webSocketService.unsubscribe('/topic/alerts');
+            webSocketService.unsubscribe('/topic/alerts', 'deployment-map');
             Object.values(alertTimeoutsRef.current).forEach(clearTimeout);
         };
     }, [handleAlert]);

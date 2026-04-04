@@ -1,103 +1,185 @@
+/* Core Variables for Premium Aesthetic */
+:root {
+    --bg-deep-space: #030712;
+    --brand-cyan: #00f0ff;
+    --brand-cyan-dim: rgba(0, 240, 255, 0.2);
+    --brand-blue: #0ea5e9;
+    --glass-bg: rgba(15, 23, 42, 0.7);
+    --glass-border: rgba(0, 240, 255, 0.15);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --status-alert: #ef4444;
+}
+
+/* Base Container with Animated Background */
 .login-container {
     height: 100vh;
     width: 100vw;
     display: flex;
     justify-content: center;
     align-items: center;
-    background: radial-gradient(circle at center, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+    background-color: var(--bg-deep-space);
+    background-image: 
+        radial-gradient(circle at 15% 10%, rgba(14, 165, 233, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(0, 240, 255, 0.1) 0%, transparent 35%);
     position: relative;
     overflow: hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--text-primary);
 }
 
+/* Dynamic Surveillance Grid Overlay */
 .login-overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    /* Simplified grid pattern for robustness */
-    background-image: linear-gradient(rgba(10, 25, 47, 0.9), rgba(10, 25, 47, 0.9));
+    background-size: 50px 50px;
+    background-image: 
+        linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
     z-index: 1;
+    pointer-events: none;
 }
 
+/* Scanner Line Animation */
+.login-overlay::after {
+    content: '';
+    position: absolute;
+    top: -100px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--brand-cyan);
+    box-shadow: 0 0 40px 10px var(--brand-cyan-dim);
+    animation: scanPulse 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes scanPulse {
+    0% { top: -10%; opacity: 0; }
+    10% { opacity: 0.8; }
+    50% { opacity: 0.8; }
+    90% { opacity: 0; }
+    100% { top: 110%; opacity: 0; }
+}
+
+/* Premium Glassmorphism Card */
 .login-card {
     position: relative;
     z-index: 10;
     width: 100%;
-    max-width: 420px;
-    padding: 2.5rem;
-    border-radius: 12px;
-    border: 1px solid rgba(100, 255, 218, 0.1);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+    max-width: 440px;
+    padding: 3.5rem 3rem;
+    border-radius: 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.8),
+        0 0 30px rgba(0, 240, 255, 0.05),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    animation: cardFloatUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform: translateY(30px);
+    opacity: 0;
 }
 
-.login-header {
-    text-align: center;
-    margin-bottom: 2rem;
+@keyframes cardFloatUp {
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
+/* Animated Logo Ring */
 .logo-spinner-container {
     position: relative;
-    width: 80px;
-    height: 80px;
+    width: 86px;
+    height: 86px;
     margin: 0 auto 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: rgba(14, 165, 233, 0.05);
+    border-radius: 50%;
+    box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.1);
 }
 
 .logo-ring {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
     border: 2px solid transparent;
-    border-top-color: var(--brand-blue);
-    border-right-color: var(--text-accent);
+    border-top-color: var(--brand-cyan);
+    border-right-color: rgba(14, 165, 233, 0.5);
     border-radius: 50%;
-    animation: spin 3s linear infinite;
+    animation: ringSpin 2.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
 }
 
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+.logo-ring::after {
+    content: '';
+    position: absolute;
+    top: 5px; left: 5px; right: 5px; bottom: 5px;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    animation: ringSpin 15s linear infinite reverse;
+}
+
+@keyframes ringSpin {
+    to { transform: rotate(360deg); }
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
 }
 
 .login-header h1 {
     font-size: 1.8rem;
-    font-weight: 700;
-    color: var(--text-primary);
+    font-weight: 800;
+    color: #ffffff;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     margin-bottom: 0.5rem;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
 .login-header p {
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
 }
 
 .subtitle {
+    display: inline-block;
     color: var(--status-alert) !important;
-    font-weight: bold;
-    font-size: 0.75rem !important;
-    margin-top: 5px;
-    letter-spacing: 1px;
+    font-weight: 700;
+    font-size: 0.70rem !important;
+    margin-top: 10px;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
 }
 
+/* Premium Inputs */
 .form-group {
     margin-bottom: 1.5rem;
+    text-align: left;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.6rem;
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
 }
 
 .input-icon-wrapper {
@@ -108,73 +190,160 @@
 
 .input-icon {
     position: absolute;
-    left: 12px;
-    color: var(--text-accent);
-    opacity: 0.7;
+    left: 16px;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
 }
 
 input {
     width: 100%;
-    padding: 12px 12px 12px 40px;
-    background: rgba(17, 34, 64, 0.8);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-primary);
+    padding: 14px 14px 14px 46px;
+    background: rgba(2, 6, 23, 0.5) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    color: #ffffff;
     font-size: 1rem;
+    font-family: inherit;
     outline: none;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
 }
 
 input:focus {
-    border-color: var(--text-accent);
-    box-shadow: 0 0 10px rgba(100, 255, 218, 0.1);
+    background: rgba(15, 23, 42, 0.8) !important;
+    border-color: var(--brand-cyan);
+    box-shadow: 
+        inset 0 2px 4px rgba(0,0,0,0.5),
+        0 0 0 3px rgba(0, 240, 255, 0.15);
 }
 
+input:focus + .input-icon,
+.input-icon-wrapper:focus-within .input-icon {
+    color: var(--brand-cyan);
+}
+
+/* Button with Gradient Hover Animation */
 .login-btn {
     width: 100%;
+    padding: 16px;
+    margin-top: 1rem;
+    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    background-size: 200% 200%;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.login-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; width: 50%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent);
+    transform: skewX(-25deg);
+    animation: shine 6s infinite;
+}
+
+@keyframes shine {
+    0% { left: -100%; }
+    20% { left: 200%; }
+    100% { left: 200%; }
+}
+
+.login-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    background-position: right center;
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.5);
+    border-color: rgba(255,255,255,0.3);
+}
+
+.login-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.login-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+    box-shadow: none;
+}
+
+.cancel-btn {
+    width: 100%;
     padding: 14px;
-    background: linear-gradient(90deg, var(--brand-blue), #0056b3);
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font-weight: bold;
+    margin-top: 12px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1px;
     cursor: pointer;
-    transition: transform 0.1s;
+    transition: all 0.3s ease;
 }
 
-.login-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+.cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
+/* Errors & States */
 .error-message {
     color: var(--status-alert);
     font-size: 0.85rem;
+    font-weight: 500;
     text-align: center;
-    margin-bottom: 1rem;
-    background: rgba(255, 77, 77, 0.1);
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 77, 77, 0.3);
+    margin-bottom: 1.5rem;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
 
-.login-footer {
-    margin-top: 2rem;
-    text-align: center;
-    border-top: 1px solid var(--border-color);
-    padding-top: 1rem;
-}
-
-.login-footer p {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    opacity: 0.6;
-    margin-bottom: 4px;
+@keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
 }
 
 .spin {
-    animation: spin 1s linear infinite;
-    margin-right: 8px;
+    animation: ringSpin 1s linear infinite;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+/* Footer Details */
+.login-footer {
+    margin-top: 2.5rem;
+    text-align: center;
+    padding-top: 1.5rem;
+    position: relative;
+}
+
+.login-footer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.2), transparent);
+}
+
+.login-footer p {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }

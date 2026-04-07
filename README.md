@@ -1,3 +1,10 @@
+## 🌍 Deployment Links
+
+| Service | URL |
+|--------|-----|
+| Frontend (Vercel) | https://mpis-system.vercel.app |
+| Backend (Render) | https://mpis-backend.onrender.com/api |
+| AI Engine (Railway) | https://mpis-ai-engine-production-f090.up.railway.app |
 ## Missing Person Intelligence System using AI-based Face Recognition and Surveillance Analytics
 
 The **Missing Person Intelligence System (MPIS)** is a real-time, distributed surveillance platform that leverages artificial intelligence to identify missing individuals using facial recognition. The system integrates modern web technologies, backend processing, and AI inference to deliver accurate and instant alerts in surveillance environments.

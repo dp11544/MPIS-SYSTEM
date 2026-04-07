@@ -24,24 +24,65 @@ public class RealtimeAlertService {
         private final ImageStorageService imageStorageService;
 
         // ================= CONFIG =================
-        @Value("${mpis.ai.similarity-threshold:0.40}")
-        private double MIN_SIMILARITY_THRESHOLD;
+        @Value("${mpis.ai.confident-threshold:0.70}")
+        private double CONFIDENT_THRESHOLD;
 
-        @Value("${mpis.cache.dedup-window-seconds:5}")
+        @Value("${mpis.ai.review-threshold:0.55}")
+        private double REVIEW_THRESHOLD;
+
+        @Value("${mpis.cache.dedup-window-seconds:10}")
         private long DEDUP_WINDOW_SECONDS;
+
+        @Value("${mpis.ai.required-frames:3}")
+        private int REQUIRED_FRAMES;
+
+        @Value("${mpis.cache.tracker-window-seconds:3}")
+        private long TRACKER_WINDOW_SECONDS;
 
         // 🛡️ LOAD CONTROL
         private final java.util.concurrent.atomic.AtomicInteger activeProcessingTasks = new java.util.concurrent.atomic.AtomicInteger(0);
         private static final int MAX_CONCURRENT_ALERTS = 50;
         // ==========================================
 
-        // ================= DEDUPLICATION CACHE =================
+        // ================= TRACKING DATA STRUCTURE =================
+        public static class FrameTrackingSession {
+                public final String personId;
+                public final String cameraId;
+                public final java.util.Queue<Long> timestamps = new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+                public FrameTrackingSession(String personId, String cameraId) {
+                        this.personId = personId;
+                        this.cameraId = cameraId;
+                }
+
+                public void recordFrame(long timestampMillis, long windowMillis) {
+                        timestamps.add(timestampMillis);
+                        long cutoff = timestampMillis - windowMillis;
+                        timestamps.removeIf(t -> t < cutoff);
+                }
+
+                public int getValidFrameCount() {
+                        return timestamps.size();
+                }
+                
+                public boolean isValidIdentity(String currentPersonId) {
+                        return this.personId.equals(currentPersonId);
+                }
+        }
+
+        // ================= DEDUPLICATION & TRACKING CACHES =================
         private com.github.benmanes.caffeine.cache.Cache<String, Boolean> recentAlertsCache;
+        private com.github.benmanes.caffeine.cache.Cache<String, FrameTrackingSession> frameTrackerCache;
 
         @PostConstruct
         protected void initCache() {
                 this.recentAlertsCache = com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
                                 .expireAfterWrite(java.time.Duration.ofSeconds(DEDUP_WINDOW_SECONDS))
+                                .maximumSize(10_000)
+                                .build();
+                                
+                this.frameTrackerCache = com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+                                .expireAfterWrite(java.time.Duration.ofSeconds(TRACKER_WINDOW_SECONDS))
                                 .maximumSize(10_000)
                                 .build();
         }
@@ -61,11 +102,54 @@ public class RealtimeAlertService {
                 activeProcessingTasks.incrementAndGet();
 
                 try {
-                        if (request.getSimilarity() < MIN_SIMILARITY_THRESHOLD) return;
+                        log.info("🔍 [BACKEND TRACE] Received alert mapped to: {} with similarity: {}", request.getPersonId(), request.getSimilarity());
 
+                        // 🔴 ADAPTIVE THRESHOLD REJECTION
+                        if (request.getSimilarity() < REVIEW_THRESHOLD) {
+                                log.warn("🔴 [BACKEND DROPPED] Alert for {} rejected! Score {} < REVIEW_THRESHOLD of {}", 
+                                        request.getPersonId(), request.getSimilarity(), REVIEW_THRESHOLD);
+                                return;
+                        }
+
+                        // Determine Adaptive Confidence Level
+                        String adaptiveLevel = request.getSimilarity() >= CONFIDENT_THRESHOLD ? "HIGH" : "MEDIUM";
+                        request.setConfidenceLevel(adaptiveLevel);
+
+                        // 🔴 SMART DEDUPLICATION SUPPRESSION
                         String dedupKey = request.getPersonId() + "_" + request.getCameraId();
-                        if (recentAlertsCache.getIfPresent(dedupKey) != null) return;
+                        if (recentAlertsCache.getIfPresent(dedupKey) != null) {
+                                log.info("🟡 [BACKEND SKIPPED] Deduplication cooldown active for key {}. System waiting {}s before re-alerting.", dedupKey, DEDUP_WINDOW_SECONDS);
+                                return;
+                        }
+
+                        // 🟠 STRICT MULTI-FRAME & IDENTITY CONFIRMATION
+                        FrameTrackingSession session = frameTrackerCache.get(dedupKey, k -> new FrameTrackingSession(request.getPersonId(), request.getCameraId()));
+                        
+                        // Identity Mismatch Reset (Edge Case Protection)
+                        if (!session.isValidIdentity(request.getPersonId())) {
+                                log.warn("🚨 [SECURITY] Identity mismatch in tracking session for {}. Resetting tracker.", dedupKey);
+                                frameTrackerCache.invalidate(dedupKey);
+                                session = new FrameTrackingSession(request.getPersonId(), request.getCameraId());
+                                frameTrackerCache.put(dedupKey, session);
+                        }
+
+                        // Record Sliding Window Timestamp
+                        long now = System.currentTimeMillis();
+                        session.recordFrame(now, TRACKER_WINDOW_SECONDS * 1000);
+                        
+                        int seenFrames = session.getValidFrameCount();
+                        
+                        if (seenFrames < REQUIRED_FRAMES) {
+                                log.info("🟠 [MULTI-FRAME] Storing frame {}/{} for {}. Accumulating within {}s sliding window...", 
+                                        seenFrames, REQUIRED_FRAMES, request.getPersonId(), TRACKER_WINDOW_SECONDS);
+                                return; // SILENT RETURN (Wait for more frames)
+                        }
+
+                        log.info("🟢 [FINAL DECISION PASSED] Alert fully validated! {} consistent frames detected within {}s. Saving to DB...", REQUIRED_FRAMES, TRACKER_WINDOW_SECONDS);
+                        // Trigger Dedup Cooldown Lock
                         recentAlertsCache.put(dedupKey, true);
+                        // Clear Tracking Session
+                        frameTrackerCache.invalidate(dedupKey);
 
                         try {
                                 // 💾 PAYLOAD OPTIMIZATION: Extract heavy base64 to File System and fetch URL

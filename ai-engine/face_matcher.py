@@ -5,11 +5,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np  # type: ignore
 
-from config import SIMILARITY_THRESHOLD, UNCERTAINTY_MARGIN, EMBEDDING_DIM  # type: ignore
+from config import CONFIDENT_THRESHOLD, REVIEW_THRESHOLD, UNCERTAINTY_MARGIN, EMBEDDING_DIM  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 CONFIDENT_MATCH = "CONFIDENT_MATCH"
+REVIEW_MATCH = "REVIEW_MATCH"
 UNCERTAIN_MATCH = "UNCERTAIN_MATCH"
 NO_MATCH = "NO_MATCH"
 
@@ -48,7 +49,7 @@ class MatchResult:
 
         return (
             f"NO_MATCH: best_score={self.similarity:.4f} "
-            f"< threshold={SIMILARITY_THRESHOLD} latency={self.latency_ms:.1f}ms"
+            f"< review_threshold={REVIEW_THRESHOLD} latency={self.latency_ms:.1f}ms"
         )
 
 
@@ -56,20 +57,21 @@ class FaceMatcher:
 
     def __init__(
         self,
-        threshold: float = SIMILARITY_THRESHOLD,
         margin: float = UNCERTAINTY_MARGIN,
     ) -> None:
 
-        self.threshold = threshold
+        self.confident_threshold = CONFIDENT_THRESHOLD
+        self.review_threshold = REVIEW_THRESHOLD
         self.margin = margin
 
         self._match_count = 0
         self._total_latency_ms = 0.0
 
         logger.info(
-            "[FACE MATCHER] Initialised (threshold=%.2f margin=%.2f)",
-            threshold,
-            margin,
+            "[FACE MATCHER] Initialised (confident=%.2f review=%.2f margin=%.2f)",
+            self.confident_threshold,
+            self.review_threshold,
+            self.margin,
         )
 
     # ----------------------------------------------------------
@@ -181,8 +183,8 @@ class FaceMatcher:
         # DECISION LOGIC
         # ------------------------------------------------------
 
-        if top_score < self.threshold:
-            logger.info(f"[FACE MATCHER] NO MATCH (score={top_score:.4f})")
+        if top_score < self.review_threshold:
+            logger.info(f"[FACE MATCHER] NO MATCH (score={top_score:.4f} < {self.review_threshold})")
             return MatchResult(
                 status=NO_MATCH,
                 person_id=None,
@@ -196,7 +198,7 @@ class FaceMatcher:
             )
 
         if gap < self.margin:
-            logger.info(f"[FACE MATCHER] UNCERTAIN MATCH ({top_name})")
+            logger.info(f"[FACE MATCHER] UNCERTAIN MATCH ({top_name} vs {sec_name}) gap={gap:.4f}")
             return MatchResult(
                 status=UNCERTAIN_MATCH,
                 person_id=top_id,
@@ -209,8 +211,11 @@ class FaceMatcher:
                 latency_ms=round(latency_ms, 2),
             )
 
+        # Apply Adaptive Logic
+        status = CONFIDENT_MATCH if top_score >= self.confident_threshold else REVIEW_MATCH
+        
         result = MatchResult(
-            status=CONFIDENT_MATCH,
+            status=status,
             person_id=top_id,
             person_name=top_name,
             similarity=round(top_score, 4),
@@ -220,6 +225,8 @@ class FaceMatcher:
             all_scores=all_scores,
             latency_ms=round(latency_ms, 2),
         )
+
+
 
         logger.info("[FACE MATCHER] %s", result.explain())
 
@@ -254,6 +261,7 @@ class FaceMatcher:
         return {
             "match_count": self._match_count,
             "avg_latency_ms": round(avg_latency, 2),
-            "threshold": self.threshold,
+            "confident_threshold": self.confident_threshold,
+            "review_threshold": self.review_threshold,
             "margin": self.margin,
         }

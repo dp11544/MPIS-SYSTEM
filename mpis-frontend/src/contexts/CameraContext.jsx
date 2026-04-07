@@ -108,25 +108,29 @@ export const CameraProvider = ({ children }) => {
                 // Submit frame cleanly
                 const res = await silentApi.post("/forensic/match-image", formData);
                 
-                if (res.data?.status === "CONFIDENT_MATCH") {
+                if (["CONFIDENT_MATCH", "REVIEW_MATCH"].includes(res.data?.status)) {
                     
                     const matchName = res.data.personName || "UNKNOWN";
                     const matchId = res.data.personId || "N/A";
                     const simScore = res.data.similarity || 0.0;
+                    const isConfident = res.data.status === "CONFIDENT_MATCH";
+                    
+                    // Alert tracking logic
+                    console.log(`[FRONTEND LOG] Authorized Alert Submission: ${matchName} (Status: ${res.data.status}, Score: ${simScore})`);
                     
                     // Stamp the evidence image on the canvas
-                    ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
                     ctx.fillRect(10, 10, Math.min(w - 20, 520), 140);
                     
                     ctx.font = "bold 22px monospace";
-                    ctx.fillStyle = "#ff4d4d"; // Red alert text
-                    ctx.fillText(`🚨 MPIS EVIDENCE CAPTURE`, 25, 45);
+                    ctx.fillStyle = isConfident ? "#ff4d4d" : "#ffc107"; // Red for Confident, Amber for Review
+                    ctx.fillText(isConfident ? `🚨 MPIS EVIDENCE CAPTURE` : `⚠️ MPIS MANUAL REVIEW FLAG`, 25, 45);
                     
                     ctx.font = "bold 18px monospace";
                     ctx.fillStyle = "#ffffff";
                     ctx.fillText(`TARGET: ${matchName.toUpperCase()} (${matchId})`, 25, 80);
                     
-                    ctx.fillStyle = "#00c864";
+                    ctx.fillStyle = isConfident ? "#00c864" : "#ffc107";
                     ctx.fillText(`MATCH CONFIDENCE: ${Math.round(simScore * 100)}%`, 25, 110);
                     
                     ctx.fillStyle = "#aaaaaa";

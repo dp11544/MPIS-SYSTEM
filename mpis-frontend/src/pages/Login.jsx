@@ -116,7 +116,7 @@ const Login = () => {
 
                 <div className="login-header">
                     <div className="logo-spinner-container">
-                        <Shield className="logo-icon" size={64} color="var(--brand-blue)" />
+                        <Shield className="logo-icon" size={44} color="var(--brand-cyan)" style={{ zIndex: 2, filter: 'drop-shadow(0 0 10px rgba(0,240,255,0.3))' }} />
                         <div className="logo-ring"></div>
                     </div>
                     <h1>MPIS Access</h1>
@@ -176,8 +176,8 @@ const Login = () => {
                     <form onSubmit={handleOtpSubmit}>
 
                         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                            <Lock size={32} color="var(--brand-blue)" />
-                            <p><strong>Two-Factor Authentication</strong></p>
+                            <Lock size={40} color="var(--brand-cyan)" style={{ filter: 'drop-shadow(0 0 8px rgba(0,240,255,0.4))', marginBottom: '10px' }} />
+                            <p style={{ color: "var(--text-primary)", letterSpacing: "1px" }}><strong>Two-Factor Authentication</strong></p>
 
                             <div style={{
                                 marginTop: '10px',

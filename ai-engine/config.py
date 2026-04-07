@@ -43,8 +43,9 @@ ONNX_PROVIDER         = "CPUExecutionProvider"
 # SIMILARITY SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 
-SIMILARITY_THRESHOLD  = 0.40
-UNCERTAINTY_MARGIN    = 0.05
+CONFIDENT_THRESHOLD   = float(os.environ.get("CONFIDENT_THRESHOLD", "0.70"))
+REVIEW_THRESHOLD      = float(os.environ.get("REVIEW_THRESHOLD", "0.55"))
+UNCERTAINTY_MARGIN    = float(os.environ.get("UNCERTAINTY_MARGIN", "0.05"))
 SIMILARITY_MAX        = 1.0
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -133,8 +134,8 @@ def _validate_config() -> None:
 
     if EMBEDDING_DIM != 512:
         errors.append(f"EMBEDDING_DIM must be 512, got {EMBEDDING_DIM}")
-    if not (0.0 < SIMILARITY_THRESHOLD < 1.0):
-        errors.append(f"SIMILARITY_THRESHOLD must be in (0,1), got {SIMILARITY_THRESHOLD}")
+    if not (0.0 < REVIEW_THRESHOLD < CONFIDENT_THRESHOLD <= 1.0):
+        errors.append(f"Thresholds must follow 0 < REVIEW < CONFIDENT <= 1")
     if not (0.0 < UNCERTAINTY_MARGIN < 0.5):
         errors.append(f"UNCERTAINTY_MARGIN must be in (0,0.5), got {UNCERTAINTY_MARGIN}")
     if REQUIRED_FRAMES < 1:

@@ -128,20 +128,41 @@ def register_routes(app, engine, db_loader, matcher):
             logger.error("[API] init failed: %s", e)
             return _error("Engine initialization failed", 500)
 
-        # Extract embedding
-        embedding = engine.get_embedding_from_image(image)
+        # Extract ALL faces dynamically (Crowd capability)
+        valid_faces = engine.get_faces(image)
 
-        if embedding is None:
+        if not valid_faces:
             return jsonify({
                 "status": "NO_FACE",
                 "similarity": 0.0,
                 "allScores": {}
             }), 200
 
-        # Perform matching
+        # Perform matching across the entire crowd frame
         try:
             database = db_loader.get_snapshot()
-            result = matcher.match(embedding, database)
+            
+            best_result = None
+            for face in valid_faces:
+                emb = getattr(face, "normed_embedding", None)
+                normalized = engine.normalize_embedding(emb)
+                
+                if normalized is not None:
+                    res = matcher.match(normalized, database)
+                    
+                    # Store the highest matching identity in the frame
+                    if best_result is None or res.similarity > best_result.similarity:
+                         best_result = res
+                         
+            # No valid embeddings resolved
+            if best_result is None:
+                return jsonify({
+                    "status": "ERROR",
+                    "message": "Valid faces found but embedding degradation failed validation layer"
+                }), 400
+                
+            result = best_result
+            
         except Exception as exc:
             logger.error("[API] match error: %s", exc)
             return _error("Matching failed", 500)
@@ -152,7 +173,7 @@ def register_routes(app, engine, db_loader, matcher):
             "allScores": result.all_scores,
         }
 
-        if result.is_confident:
+        if result.status in ["CONFIDENT_MATCH", "REVIEW_MATCH"]:
             response["personId"] = result.person_id
             response["personName"] = result.person_name
 

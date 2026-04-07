@@ -40,6 +40,13 @@ class MatchResult:
                 f"latency={self.latency_ms:.1f}ms"
             )
 
+        if self.status == REVIEW_MATCH:
+            return (
+                f"REVIEW_MATCH: '{self.person_name}' (id={self.person_id}) "
+                f"score={self.similarity:.4f} gap={self.gap:.4f} "
+                f"latency={self.latency_ms:.1f}ms"
+            )
+
         if self.status == UNCERTAIN_MATCH:
             return (
                 f"UNCERTAIN_MATCH: best='{self.person_name}' score={self.similarity:.4f} "

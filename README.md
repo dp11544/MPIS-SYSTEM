@@ -1,7 +1,4 @@
-<img width="1918" height="952" alt="Screenshot 2026-04-07 165948" src="https://github.com/user-attachments/assets/f1893228-0048-4900-9b85-661c8eb39a0f" />Missing Person Intelligence System (MPIS)
-
-### *AI-Based Face Recognition and Real-Time Surveillance Analytics*
-
+Missing Person Intelligence System using AI-based Face Recognition and Surveillance Analytics
 The **Missing Person Intelligence System (MPIS)** is a real-time, distributed surveillance platform that leverages artificial intelligence to identify missing individuals using facial recognition. The system integrates modern web technologies, backend processing, and AI inference to deliver accurate and instant alerts in surveillance environments.
 
 ## System Overview

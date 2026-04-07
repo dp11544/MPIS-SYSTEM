@@ -1,11 +1,8 @@
-<img width="1919" height="964" alt="Screenshot 2026-04-07 170237" src="https://github.com/user-attachments/assets/302e23d6-c105-47e3-9668-168f8dc59e2e" />
-  Missing Person Intelligence System (MPIS)
+<img width="1918" height="952" alt="Screenshot 2026-04-07 165948" src="https://github.com/user-attachments/assets/f1893228-0048-4900-9b85-661c8eb39a0f" />Missing Person Intelligence System (MPIS)
 
 ### *AI-Based Face Recognition and Real-Time Surveillance Analytics*
 
 The **Missing Person Intelligence System (MPIS)** is a real-time, distributed surveillance platform that leverages artificial intelligence to identify missing individuals using facial recognition. The system integrates modern web technologies, backend processing, and AI inference to deliver accurate and instant alerts in surveillance environments.
-
----
 
 ## System Overview
 
@@ -13,11 +10,8 @@ MPIS is designed to automate the identification process by analyzing image input
 
 It is built using a scalable architecture where each component operates independently, enabling efficient processing and real-time communication.
 
----
-
 ##  Architecture
 
-```
 Frontend (React - Vercel)
         ↓
 Backend (Spring Boot - Render)
@@ -27,9 +21,6 @@ AI Engine (Flask - Railway)
 MongoDB Database
         ↓
 WebSocket (Real-time Alerts)
-```
-
----
 
 ## ⚙️ Core Features
 
@@ -42,8 +33,6 @@ WebSocket (Real-time Alerts)
 * 🛡️ Backpressure control using AtomicInteger
 * 💾 Optimized image storage (filesystem-based)
 * 🌐 Distributed cloud deployment
-
----
 
 ## ⚙️ Technology Stack
 
@@ -66,8 +55,6 @@ WebSocket (Real-time Alerts)
 * InsightFace
 * OpenCV
 * NumPy
-
----
 
 ## 🔗 Environment Configuration
 
@@ -117,79 +104,67 @@ SPRING_DATA_MONGODB_URI=your_mongodb_uri
 ## 🔐 Login Interface
 <img width="1919" height="964" alt="Screenshot 2026-04-07 170237" src="https://github.com/user-attachments/assets/96a18b8f-0dee-4797-b700-6ddc336119b0" />
 
-
 Secure authentication interface that restricts system access to authorized users.
 
 ---
+## 🧠 Dashboard Interface
+<img width="1919" height="1079" alt="Screenshot 2026-04-01 003703" src="https://github.com/user-attachments/assets/2e0c9ab6-2822-4e14-8bfb-fb97b0e37492" />
+
 
 ## 📝 Missing Person Registration
 
-![Register](./screenshots/register.png)
+<img width="1911" height="969" alt="Screenshot 2026-04-04 144638" src="https://github.com/user-attachments/assets/30b04a5b-0188-4e25-9b1e-a4c29c2bcce7" />
+
 
 Interface for registering missing person details along with facial images for future identification.
 
 ---
 
 ## 🔬 Forensic Match Interface
-
-![Forensic](./screenshots/forensic.png)
-
+<img width="1912" height="960" alt="Screenshot 2026-04-04 145400" src="https://github.com/user-attachments/assets/dd0aca16-b6a7-40ab-a4a9-e1f740b2e84c" />
 Allows manual image upload and AI-based matching for investigation purposes.
 
 ---
 
 ## 📡 Live Surveillance Monitor
-
-![Live](./screenshots/live.png)
-
+<img width="1918" height="952" alt="Screenshot 2026-04-07 165948" src="https://github.com/user-attachments/assets/0c57ae75-6aaf-4554-9651-daa9f467b383" />
 Displays real-time alerts generated from surveillance streams with instant updates.
 
 ---
 
 ## 🗺️ Deployment Map Interface
 
-![Map](./screenshots/map.png)
-
+<img width="1919" height="958" alt="Screenshot 2026-04-07 165119" src="https://github.com/user-attachments/assets/4f9e371c-3a5a-4a32-b823-33ce6372f79e" />
 Visual representation of camera locations and detection points for situational awareness.
 
 ---
 
 ## 📂 Missing Persons Registry
-
-![Registry](./screenshots/registry.png)
-
+<img width="1911" height="967" alt="Screenshot 2026-04-07 165418" src="https://github.com/user-attachments/assets/7c753223-d76b-44be-aebe-23d397514e44" />
 Structured database view of all registered individuals with search and management features.
 
 ---
-
 ## 📊 Intelligence Overview
 
-![Dashboard](./screenshots/dashboard.png)
-
+<img width="1914" height="963" alt="Screenshot 2026-04-07 170526" src="https://github.com/user-attachments/assets/d10ad090-a20b-41cb-9b72-260dec2668a1" />
 Displays analytics such as total alerts, matches, and system activity insights.
 
 ---
 
 ## 🧪 Diagnostics & Telemetry
-
-![Diagnostics](./screenshots/diagnostics.png)
-
+<img width="1904" height="970" alt="Screenshot 2026-04-07 165255" src="https://github.com/user-attachments/assets/d6337a5c-7081-42b5-8f1e-8c3df47c8d02" />
 Provides system health status including backend, AI engine, and connectivity.
 
 ---
 
 ## 📁 Case File Interface
-
-![Case](./screenshots/case.png)
-
+<img width="1919" height="965" alt="Screenshot 2026-04-07 170821" src="https://github.com/user-attachments/assets/f0f847f3-a991-4db2-93da-1ea7d8f11078" />
 Detailed view of a specific alert including identity, similarity score, and metadata.
 
 ---
 
 ## 📚 Full Case File Interface
-
-![Full Case](./screenshots/fullcase.png)
-
+!<img width="1911" height="956" alt="Screenshot 2026-04-07 170926" src="https://github.com/user-attachments/assets/daa0d428-b3a9-4538-a1c8-cc9b9d5a3b9c" />
 Comprehensive case tracking with historical alerts and evidence data.
 
 ---
@@ -233,5 +208,3 @@ Comprehensive case tracking with historical alerts and evidence data.
 ## 👨‍💻 Author
 
 ALLAM DURGA PRASAD
-Missing Person Intelligence System (MPIS)
-

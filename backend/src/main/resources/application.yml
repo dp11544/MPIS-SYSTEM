@@ -28,11 +28,14 @@ otp:
 
 mpis:
   ai:
-    similarity-threshold: 0.40   # 🔥 FIXED (0.75 was blocking all valid matches)
+    confident-threshold: 0.70
+    review-threshold: 0.55
+    required-frames: 1
     engine-url: ${MPIS_AI_ENGINE_URL}
 
   cache:
-    dedup-window-seconds: 5
+    dedup-window-seconds: 10
+    tracker-window-seconds: 3
 
   jwt:
     secret: ${JWT_SECRET}   # 🔥 NEVER hardcode

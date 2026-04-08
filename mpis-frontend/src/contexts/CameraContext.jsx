@@ -47,6 +47,17 @@ export const CameraProvider = ({ children }) => {
             setCameraStream(stream);
             setIsCameraActive(true);
 
+            // ⚡ MUST register camera in backend so Deployment Map displays its alerts!
+            await silentApi.post("/cameras/heartbeat", {
+                cameraId: activeCameraId.current,
+                name: "Laptop Webcam",
+                location: "Command Center",
+                zone: "HQ",
+                description: "Primary Web Console Monitor",
+                latitude: 16.5449,
+                longitude: 81.5212
+            }).catch(e => console.warn("Heartbeat failed", e));
+
             // Start sending frames globally
             if (!intervalRef.current) {
                 intervalRef.current = setInterval(captureAndMatch, 2000);

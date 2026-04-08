@@ -27,7 +27,7 @@ public class RealtimeAlertService {
         @Value("${mpis.ai.confident-threshold:0.70}")
         private double CONFIDENT_THRESHOLD;
 
-        @Value("${mpis.ai.review-threshold:0.55}")
+        @Value("${mpis.ai.review-threshold:0.40}")
         private double REVIEW_THRESHOLD;
 
         @Value("${mpis.cache.dedup-window-seconds:10}")

@@ -44,7 +44,7 @@ ONNX_PROVIDER         = "CPUExecutionProvider"
 # ─────────────────────────────────────────────────────────────────────────────
 
 CONFIDENT_THRESHOLD   = float(os.environ.get("CONFIDENT_THRESHOLD", "0.70"))
-REVIEW_THRESHOLD      = float(os.environ.get("REVIEW_THRESHOLD", "0.55"))
+REVIEW_THRESHOLD      = float(os.environ.get("REVIEW_THRESHOLD", "0.40"))
 UNCERTAINTY_MARGIN    = float(os.environ.get("UNCERTAINTY_MARGIN", "0.05"))
 SIMILARITY_MAX        = 1.0
 

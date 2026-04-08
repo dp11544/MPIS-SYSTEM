@@ -159,7 +159,7 @@ export const CameraProvider = ({ children }) => {
                         personId: matchId,
                         personName: matchName,
                         similarityScore: simScore,
-                        cameraId: cId,
+                        cameraId: activeCameraId.current,
                         evidenceImage: evidenceBase64,
                         detectedAt: Date.now()
                     });

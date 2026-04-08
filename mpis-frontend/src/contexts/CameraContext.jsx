@@ -119,10 +119,8 @@ export const CameraProvider = ({ children }) => {
             formData.append("file", blob, "frame.jpg");
 
             try {
-                // Submit frame cleanly
-                const url = new URL("/api/forensic/match-image", silentApi.defaults.baseURL);
-                url.searchParams.append('cameraId', cId);
-                const res = await silentApi.post(url.pathname + url.search, formData);
+                // Submit frame cleanly with query params appended securely
+                const res = await silentApi.post(`/forensic/match-image?cameraId=${cId}`, formData);
                 
                 if (["CONFIDENT_MATCH", "REVIEW_MATCH"].includes(res.data?.status)) {
                     

@@ -8,7 +8,6 @@ export const useCamera = () => useContext(CameraContext);
 export const CameraProvider = ({ children }) => {
     const [isCameraActive, setIsCameraActive] = useState(false);
     const [cameraStream, setCameraStream] = useState(null);
-    const [ipCamUrl, setIpCamUrl] = useState(null);
     const videoRef = useRef(null);
     const intervalRef = useRef(null);
 
@@ -78,51 +77,36 @@ export const CameraProvider = ({ children }) => {
 
     // Global AI Frame Extraction & Transmission
     const captureAndMatch = async () => {
-    // Process individual camera feed
-    const processFrame = (mediaElement, cId) => {
-        if (!mediaElement) return;
-        
-        let width, height;
-        if (mediaElement.tagName === 'VIDEO') {
-             if (mediaElement.videoWidth === 0) return;
-             width = mediaElement.videoWidth;
-             height = mediaElement.videoHeight;
-        } else {
-             if (mediaElement.naturalWidth === 0) return;
-             width = mediaElement.naturalWidth;
-             height = mediaElement.naturalHeight;
-        }
+        if (!videoRef.current || videoRef.current.videoWidth === 0) return;
+        if (isProcessingRef.current) return; // Prevent concurrent request flooding
 
+        isProcessingRef.current = true; // Lock
+
+        // ⚡ PAYLOAD OPTIMIZATION: Drastically scale down the extraction width 
+        // to prevent large Base64 blobs from saturating MongoDB limits and slowing network HTTP POSTs.
         const MAX_OPTIMAL_WIDTH = 800; 
-        const scale = Math.min(1, MAX_OPTIMAL_WIDTH / width);
-        const w = width * scale;
-        const h = height * scale;
+        const scale = Math.min(1, MAX_OPTIMAL_WIDTH / videoRef.current.videoWidth);
+        const w = videoRef.current.videoWidth * scale;
+        const h = videoRef.current.videoHeight * scale;
 
         const canvas = document.createElement("canvas");
         canvas.width = w;
         canvas.height = h;
         const ctx = canvas.getContext("2d");
-        
-        try {
-            ctx.drawImage(mediaElement, 0, 0, w, h);
-        } catch (e) {
-            // CORS Taint error if IP Cam blocks Canvas read
-            console.warn("Canvas drawImage blocked (likely strict IP Cam CORS):", e);
-            return;
-        }
+        ctx.drawImage(videoRef.current, 0, 0, w, h);
 
         // Compress extraction blob for rapid AI Inference bandwidth
         canvas.toBlob(async (blob) => {
-            if (!blob) return;
-            
+            if (!blob) {
+                isProcessingRef.current = false;
+                return;
+            }
             const formData = new FormData();
             formData.append("file", blob, "frame.jpg");
 
             try {
                 // Submit frame cleanly
-                const url = new URL("/api/forensic/match-image", silentApi.defaults.baseURL);
-                url.searchParams.append('cameraId', cId);
-                const res = await silentApi.post(url.pathname + url.search, formData);
+                const res = await silentApi.post("/forensic/match-image", formData);
                 
                 if (["CONFIDENT_MATCH", "REVIEW_MATCH"].includes(res.data?.status)) {
                     
@@ -132,7 +116,7 @@ export const CameraProvider = ({ children }) => {
                     const isConfident = res.data.status === "CONFIDENT_MATCH";
                     
                     // Alert tracking logic
-                    console.log(`[FRONTEND LOG] Authorized Alert Submission (${cId}): ${matchName} (Status: ${res.data.status}, Score: ${simScore})`);
+                    console.log(`[FRONTEND LOG] Authorized Alert Submission: ${matchName} (Status: ${res.data.status}, Score: ${simScore})`);
                     
                     // Stamp the evidence image on the canvas
                     ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
@@ -173,27 +157,7 @@ export const CameraProvider = ({ children }) => {
                 // 🔥 CRITICAL: Guarantee lock is released regardless of success or horrific failure.
                 isProcessingRef.current = false; 
             }
-            }, "image/jpeg", 0.75); // 0.75 tuning for optimized python analysis
-        };
-
-        if (isProcessingRef.current) return;
-        isProcessingRef.current = true;
-        
-        try {
-            // Process Webcam
-            if (videoRef.current && videoRef.current.videoWidth > 0) {
-                 processFrame(videoRef.current, activeCameraId.current);
-            }
-            
-            // Process iPhone IP Cam if fully mounted and loaded
-            const ipCamImg = document.getElementById("cam02-ip-video");
-            if (ipCamImg && ipCamImg.naturalWidth > 0) {
-                 processFrame(ipCamImg, "CAM_02_IPHONE_CCTV");
-            }
-        } finally {
-            // Unlock safely after asynchronous blob callbacks are queued (not awaited by design to keep UI fast)
-            setTimeout(() => { isProcessingRef.current = false; }, 1000);
-        }
+        }, "image/jpeg", 0.75); // 0.75 tuning for optimized python analysis
     };
 
     // Automatically keep it running once user logs in or mounts layout
@@ -203,16 +167,15 @@ export const CameraProvider = ({ children }) => {
         // eslint-disable-next-line
     }, []);
 
+    const value = {
+        isCameraActive,
+        cameraStream,
+        startCamera,
+        stopCamera
+    };
+
     return (
-        <CameraContext.Provider value={{
-            isCameraActive,
-            cameraStream,
-            startCamera,
-            stopCamera,
-            videoRef,
-            ipCamUrl,
-            setIpCamUrl
-        }}>
+        <CameraContext.Provider value={value}>
             {children}
         </CameraContext.Provider>
     );

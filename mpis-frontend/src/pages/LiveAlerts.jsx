@@ -13,12 +13,7 @@ const LiveAlerts = () => {
     const feedRef = useRef(null);
     const videoRef = useRef(null);
 
-    const { cameraStream, setIpCamUrl, ipCamUrl } = useCamera();
-    const [localIpCam, setLocalIpCam] = useState("http://192.168.1.9:8081/video");
-
-    const handleConnectIpCam = () => {
-        setIpCamUrl(localIpCam);
-    };
+    const { cameraStream } = useCamera();
 
     // Attach global camera stream to the local screen if available
     useEffect(() => {
@@ -149,7 +144,7 @@ const LiveAlerts = () => {
                         />
                     </div>
 
-                    {/* CAM 2: Remote Placeholder / IP Camera */}
+                    {/* CAM 2: Remote Placeholder */}
                     <div style={{
                         border: '1px solid rgba(255,255,255,0.05)',
                         borderRadius: '12px',
@@ -165,42 +160,13 @@ const LiveAlerts = () => {
                             position: 'absolute', top: '10px', left: '10px',
                             background: 'rgba(0,123,255,0.2)', border: '1px solid rgba(0,123,255,0.4)',
                             color: '#007bff', padding: '4px 10px', borderRadius: '6px',
-                            fontSize: '0.7rem', fontWeight: 'bold', zIndex: 10
+                            fontSize: '0.7rem', fontWeight: 'bold'
                         }}>
-                            CAM 02 (iPhone CCTV)
+                            CAM 02 (NODE 1)
                         </div>
-                        
-                        {!ipCamUrl ? (
-                            <div style={{ padding: '20px', textAlign: 'center', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                <VideoOff size={32} color="var(--text-secondary)" style={{ opacity: 0.3, marginBottom: '15px' }} />
-                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 'bold' }}>IP CAMERA FEED</span>
-                                
-                                <div style={{ marginTop: '15px', display: 'flex', gap: '5px', width: '80%' }}>
-                                    <input 
-                                       type="text" 
-                                       value={localIpCam} 
-                                       onChange={(e) => setLocalIpCam(e.target.value)} 
-                                       placeholder="http://192.168.x.x:8081/video"
-                                       style={{ flex: 1, padding: '5px 10px', fontSize: '0.7rem', background: '#111', color: 'white', border: '1px solid #333', borderRadius: '4px' }}
-                                    />
-                                    <button 
-                                       onClick={handleConnectIpCam}
-                                       style={{ background: '#007bff', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold' }}>
-                                       CONNECT
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <img 
-                                id="cam02-ip-video"
-                                src={ipCamUrl}
-                                crossOrigin="anonymous"
-                                alt="IP Camera Stream"
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                onError={() => setIpCamUrl(null)}
-                            />
-                        )}
-                        
+                        <VideoOff size={32} color="var(--text-secondary)" style={{ opacity: 0.3, marginBottom: '15px' }} />
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 'bold', letterSpacing: '1px' }}>AWAITING CONNECTION</span>
+                        <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.65rem', marginTop: '5px', fontFamily: 'monospace' }}>SIGNAL LOST / OFFLINE</span>
                     </div>
 
                     {/* CAM 3: Remote Placeholder */}

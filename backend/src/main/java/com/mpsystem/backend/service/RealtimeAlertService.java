@@ -24,16 +24,16 @@ public class RealtimeAlertService {
         private final ImageStorageService imageStorageService;
 
         // ================= CONFIG =================
-        @Value("${mpis.ai.confident-threshold:0.70}")
+        @Value("${mpis.ai.confident-threshold:0.75}")
         private double CONFIDENT_THRESHOLD;
 
-        @Value("${mpis.ai.review-threshold:0.40}")
+        @Value("${mpis.ai.review-threshold:0.60}")
         private double REVIEW_THRESHOLD;
 
         @Value("${mpis.cache.dedup-window-seconds:10}")
         private long DEDUP_WINDOW_SECONDS;
 
-        @Value("${mpis.ai.required-frames:3}")
+        @Value("${mpis.ai.required-frames:1}")
         private int REQUIRED_FRAMES;
 
         @Value("${mpis.cache.tracker-window-seconds:3}")

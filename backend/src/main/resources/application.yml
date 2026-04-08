@@ -28,9 +28,9 @@ otp:
 
 mpis:
   ai:
-    confident-threshold: 0.70
-    review-threshold: 0.40
-    required-frames: 3
+    confident-threshold: 0.75
+    review-threshold: 0.60
+    required-frames: 1
     engine-url: ${MPIS_AI_ENGINE_URL}
 
   cache:

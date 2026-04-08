@@ -57,12 +57,13 @@ public class FaceMatchController {
             String status = String.valueOf(res.get("status"));
 
             // ================= RESPONSE =================
-            switch (status) {
-                case "CONFIDENT_MATCH":
-                case "NO_MATCH":
-                case "NO_FACE":
-                case "ERROR":
-                    return ResponseEntity.ok(res);
+        switch (status) {
+            case "CONFIDENT_MATCH":
+            case "REVIEW_MATCH":
+            case "NO_MATCH":
+            case "NO_FACE":
+            case "ERROR":
+                return ResponseEntity.ok(res);
 
                 default:
                     log.warn("⚠️ UNKNOWN AI STATUS: {}", status);

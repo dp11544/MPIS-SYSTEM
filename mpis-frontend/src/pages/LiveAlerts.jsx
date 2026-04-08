@@ -221,15 +221,49 @@ const LiveAlerts = () => {
                 </div>
 
                 {/* ALERTS */}
-                <div style={{
+                <div className="glass-panel" style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px',
-                    padding: '1rem'
+                    borderRadius: '16px',
+                    padding: '0',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                    background: 'rgba(5, 10, 20, 0.6)'
                 }}>
-
-                    <h3>Live Alerts ({liveFeed.length})</h3>
+                    <div style={{
+                        padding: '1rem 1.2rem',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        background: 'linear-gradient(90deg, rgba(255,77,77,0.1) 0%, transparent 100%)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}>
+                        <h3 style={{ 
+                            fontSize: '1rem', 
+                            fontWeight: '800', 
+                            color: 'var(--text-primary)', 
+                            textTransform: 'uppercase', 
+                            letterSpacing: '1px', 
+                            margin: 0, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '10px' 
+                        }}>
+                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--status-alert)', boxShadow: '0 0 10px var(--status-alert)', animation: 'pulse 1.5s infinite' }}></div>
+                            Incoming Intelligence 
+                        </h3>
+                        <span style={{ 
+                            background: 'rgba(0,0,0,0.5)', 
+                            padding: '4px 10px', 
+                            borderRadius: '20px', 
+                            fontSize: '0.75rem', 
+                            color: 'var(--text-secondary)',
+                            border: '1px solid rgba(255,255,255,0.1)'
+                        }}>
+                            {liveFeed.length} ALERTS
+                        </span>
+                    </div>
 
                     <div
                         ref={feedRef}
@@ -238,11 +272,17 @@ const LiveAlerts = () => {
                             overflowY: 'auto',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '5px'
+                            gap: '10px',
+                            padding: '1.2rem',
+                            paddingBottom: '2rem'
                         }}
                     >
                         {liveFeed.length === 0 ? (
-                            <p>No alerts yet</p>
+                            <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-secondary)' }}>
+                                <div style={{ fontSize: '3rem', opacity: 0.1, marginBottom: '1rem' }}>🛡️</div>
+                                <p style={{ fontSize: '0.9rem', margin: '0 0 5px', color: 'var(--text-primary)' }}>Awaiting Signatures</p>
+                                <p style={{ fontSize: '0.75rem', margin: 0 }}>System is actively scanning camera feeds</p>
+                            </div>
                         ) : (
                             liveFeed.map((alert, index) => (
                                 <AlertCard
@@ -254,9 +294,28 @@ const LiveAlerts = () => {
                         )}
                     </div>
 
-                    <button onClick={simulateAlert} style={{ marginTop: '10px' }}>
-                        Simulate Alert
-                    </button>
+                    <div style={{ padding: '0.8rem 1.2rem', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.3)' }}>
+                        <button onClick={simulateAlert} style={{ 
+                            width: '100%', 
+                            padding: '10px', 
+                            background: 'transparent', 
+                            border: '1px dashed rgba(255,255,255,0.2)', 
+                            color: 'var(--text-secondary)', 
+                            borderRadius: '8px', 
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}
+                        onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--text-primary)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                        onMouseOut={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                        >
+                            Inject Simulated Tracking Data
+                        </button>
+                    </div>
 
                 </div>
             </div>

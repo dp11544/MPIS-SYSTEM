@@ -33,7 +33,7 @@ public class RealtimeAlertService {
         @Value("${mpis.cache.dedup-window-seconds:10}")
         private long DEDUP_WINDOW_SECONDS;
 
-        @Value("${mpis.ai.required-frames:1}")
+        @Value("${mpis.ai.required-frames:3}")
         private int REQUIRED_FRAMES;
 
         @Value("${mpis.cache.tracker-window-seconds:3}")

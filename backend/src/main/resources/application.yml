@@ -30,7 +30,7 @@ mpis:
   ai:
     confident-threshold: 0.70
     review-threshold: 0.40
-    required-frames: 1
+    required-frames: 3
     engine-url: ${MPIS_AI_ENGINE_URL}
 
   cache:

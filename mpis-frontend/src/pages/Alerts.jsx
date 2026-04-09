@@ -186,7 +186,7 @@ const Alerts = () => {
                 ${alertData.evidenceImagePath ? `
                 <div style="margin-top: 40px; border: 2px solid #ccc; border-radius: 12px; overflow: hidden;">
                     <h3 style="background: #1a1a2e; color: #fff; padding: 15px; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">📸 CAMERA EVIDENCE FRAME</h3>
-                    <img src="${alertData.evidenceImagePath}" style="width: 100%; display: block;" alt="Evidence Frame" />
+                    <img src="${buildImageUrl(alertData.evidenceImagePath)}" style="width: 100%; display: block;" alt="Evidence Frame" />
                 </div>
                 ` : ''}
                 
@@ -1254,7 +1254,7 @@ const Alerts = () => {
                             ><X size={18} /></button>
                         </div>
                         
-                        <img src={evidenceModalImage} style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block' }} alt="Alert Evidence" />
+                        <img src={buildImageUrl(evidenceModalImage)} style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block' }} alt="Alert Evidence" />
                     </div>
                 </div>
             )}

@@ -95,4 +95,47 @@ public class AIClientService {
             );
         }
     }
+
+    @SuppressWarnings("unchecked")
+    public java.util.List<Double> extractEmbedding(MultipartFile file) {
+        try {
+            String url = aiEngineUrl + "/extract";
+            log.info("🔥 Calling AI EXTRACT: {}", url);
+
+            ByteArrayResource resource = new ByteArrayResource(file.getBytes()) {
+                @Override
+                public String getFilename() {
+                    return file.getOriginalFilename() != null ? file.getOriginalFilename() : "image.jpg";
+                }
+            };
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", resource);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            Map<String, Object> res = response.getBody();
+
+            if (res != null && "SUCCESS".equals(res.get("status"))) {
+                Object embObj = res.get("embedding");
+                if (embObj instanceof java.util.List) {
+                    java.util.List<Double> embedding = new java.util.ArrayList<>();
+                    for (Object val : (java.util.List<?>) embObj) {
+                        embedding.add(Double.valueOf(val.toString()));
+                    }
+                    return embedding;
+                }
+            }
+            log.warn("❌ AI EXTRACT FAILED OR NO FACE DETECTED: {}", res);
+            return null;
+
+        } catch (Exception e) {
+            log.error("❌ AI EXTRACT FAILED", e);
+            return null;
+        }
+    }
 }

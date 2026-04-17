@@ -7,7 +7,7 @@ const RegisterCase = () => {
     const [formData, setFormData] = useState({
         name: '', age: '', gender: 'Male', lastSeenLocation: '', contactNumber: '', lastSeenDate: '', notes: ''
     });
-    const [file, setFile] = useState(null);
+    const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState('');
@@ -18,8 +18,16 @@ const RegisterCase = () => {
     };
 
     const handleFileChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
+        if (e.target.files) {
+            const selectedFiles = Array.from(e.target.files);
+            if (selectedFiles.length > 5) {
+                toast.error("You can upload a maximum of 5 photos.");
+                return;
+            }
+            if (selectedFiles.length < 1) {
+                return;
+            }
+            setFiles(selectedFiles);
         }
     };
 
@@ -29,8 +37,8 @@ const RegisterCase = () => {
         setError('');
         setSuccess(false);
 
-        if (!file) {
-            setError('Photo is required for identification');
+        if (files.length === 0) {
+            setError('At least one photo is required for identification');
             setLoading(false);
             return;
         }
@@ -50,9 +58,9 @@ const RegisterCase = () => {
 
             if (!personId) throw new Error("Failed to create person record");
 
-            // 2. Upload Photo
+            // 2. Upload Photos
             const uploadData = new FormData();
-            uploadData.append('image', file);
+            files.forEach(f => uploadData.append('images', f));
 
             await api.post(`/upload/${personId}`, uploadData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
@@ -61,7 +69,7 @@ const RegisterCase = () => {
             setSuccess(true);
             toast.success("Case registered successfully! Surveillance active.");
             setFormData({ name: '', age: '', gender: 'Male', lastSeenLocation: '', contactNumber: '', lastSeenDate: '', notes: '' });
-            setFile(null);
+            setFiles([]);
 
         } catch (err) {
             setError('Registration failed. Please check the details and try again.');
@@ -164,34 +172,36 @@ const RegisterCase = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <h3 style={{ color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px', marginBottom: '10px', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Biometrics</h3>
 
-                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Identification Photo *</label>
+                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Identification Photos (1-5 images) *</label>
                         <div style={{
-                            flex: 1, minHeight: '200px', border: file ? '2px solid var(--text-accent)' : '2px dashed rgba(255,255,255,0.2)',
+                            flex: 1, minHeight: '200px', border: files.length > 0 ? '2px solid var(--text-accent)' : '2px dashed rgba(255,255,255,0.2)',
                             borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             background: 'rgba(0,0,0,0.3)', position: 'relative', cursor: 'pointer', overflow: 'hidden',
                             transition: 'all 0.3s ease'
                         }}
                             onClick={() => document.getElementById('fileUpload').click()}
-                            onMouseOver={e => !file && (e.currentTarget.style.borderColor = 'rgba(100,255,218,0.5)', e.currentTarget.style.background = 'rgba(100,255,218,0.05)')}
-                            onMouseOut={e => !file && (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)', e.currentTarget.style.background = 'rgba(0,0,0,0.3)')}
+                            onMouseOver={e => files.length === 0 && (e.currentTarget.style.borderColor = 'rgba(100,255,218,0.5)', e.currentTarget.style.background = 'rgba(100,255,218,0.05)')}
+                            onMouseOut={e => files.length === 0 && (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)', e.currentTarget.style.background = 'rgba(0,0,0,0.3)')}
                         >
-                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1, display: file ? 'block' : 'none' }}>
-                                {file && <img src={URL.createObjectURL(file)} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '10px' }} />}
+                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1, display: files.length > 0 ? 'flex' : 'none', flexWrap: 'wrap', gap: '5px', padding: '10px' }}>
+                                {files.map((f, i) => (
+                                    <img key={i} src={URL.createObjectURL(f)} alt={`Preview ${i}`} style={{ width: 'calc(50% - 5px)', height: 'calc(50% - 5px)', objectFit: 'cover', borderRadius: '5px' }} />
+                                ))}
                             </div>
 
-                            <div style={{ zIndex: 2, display: file ? 'none' : 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ zIndex: 2, display: files.length > 0 ? 'none' : 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                 <Camera size={48} color="var(--text-secondary)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>Click to select secure image file</p>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.7rem', marginTop: '5px', opacity: 0.5 }}>(JPG/PNG, Max 5MB, Front-facing preferred)</p>
                             </div>
 
-                            {file && (
+                            {files.length > 0 && (
                                 <div style={{ position: 'absolute', bottom: '10px', right: '10px', zIndex: 3, background: 'rgba(0,0,0,0.7)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', backdropFilter: 'blur(5px)' }}>
-                                    {file.name}
+                                    {files.length} photo(s) selected
                                 </div>
                             )}
 
-                            <input id="fileUpload" type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+                            <input id="fileUpload" type="file" accept="image/*" multiple onChange={handleFileChange} style={{ display: 'none' }} />
                         </div>
 
                         <button type="submit" disabled={loading} style={{

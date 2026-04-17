@@ -155,7 +155,7 @@ class FaceMatcher:
 
                 score = float(np.dot(embedding, stored_emb))
 
-                logger.debug("[SIMILARITY] %s = %.4f", name, score)
+                logger.info("[SIMILARITY] %s = %.4f", name, score)
 
                 if score > best_score:
                     best_score = score

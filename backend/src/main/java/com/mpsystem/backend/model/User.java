@@ -20,7 +20,7 @@ public class User {
     private String passwordHash;
     private String mobile;
 
-    private String role;   // OFFICER / ADMIN
+    private String role; // OFFICER / ADMIN
     private String status; // RESET_REQUIRED / ACTIVE / LOCKED
 
     private int failedAttempts;

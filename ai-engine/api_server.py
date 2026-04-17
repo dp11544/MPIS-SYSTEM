@@ -180,6 +180,38 @@ def register_routes(app, engine, db_loader, matcher):
         return jsonify(response), 200
 
     # ---------------------------------------------------------
+    # 🔥 EXTRACT ENDPOINT (FOR MULTI-PHOTO REGISTRATION)
+    # ---------------------------------------------------------
+    @app.route("/extract", methods=["POST"])
+    @limiter.limit(API_RATE_LIMIT)
+    def extract():
+        file = request.files.get("file") or request.files.get("image")
+        if not file:
+            return _error("No file provided", 400)
+
+        try:
+            image_bytes = file.read()
+            arr = np.frombuffer(image_bytes, dtype=np.uint8)
+            image = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            if image is None:
+                return _error("Invalid image format", 400)
+        except Exception as exc:
+            logger.error("[API] decode error: %s", exc)
+            return _error("Image decode failed", 400)
+
+        try:
+            engine = _engine_getter()
+            emb = engine.get_embedding_from_image(image)
+        except Exception as e:
+            logger.error("[API] extraction failed: %s", e)
+            return _error("Engine extraction failed", 500)
+
+        if emb is None:
+            return jsonify({"status": "NO_FACE", "embedding": []}), 200
+
+        return jsonify({"status": "SUCCESS", "embedding": emb.tolist()}), 200
+
+    # ---------------------------------------------------------
     # ERROR HANDLER
     # ---------------------------------------------------------
     @app.errorhandler(500)

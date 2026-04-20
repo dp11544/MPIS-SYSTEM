@@ -88,6 +88,9 @@ public class AuthFilter implements Filter {
 
                // 🔥 FORENSIC (IMPORTANT)
                path.startsWith("/api/forensic") ||
+               
+               // 🔥 EXPOSE STATIC UPLOADS
+               path.startsWith("/uploads") ||
 
                path.startsWith("/actuator") ||
                path.startsWith("/health") ||

@@ -1,44 +1,28 @@
 package com.mpsystem.backend.service;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import jakarta.annotation.PostConstruct;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Base64;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 @Slf4j
 public class ImageStorageService {
 
-    @Value("${mpis.storage.evidence-dir:uploads/evidence}")
-    private String evidenceDir;
-    
-    // Configurable base URL mapped to WebMvcConfigurer for serving static files
-    @Value("${mpis.storage.base-url:/uploads/evidence}")
-    private String baseUrl;
+    private final Cloudinary cloudinary;
 
-    @PostConstruct
-    public void init() {
-        try {
-            Path path = Paths.get(evidenceDir);
-            if (!Files.exists(path)) {
-                Files.createDirectories(path);
-                log.info("📁 Created evidence storage directory at {}", path.toAbsolutePath());
-            }
-        } catch (IOException e) {
-            log.error("💥 Failed to create evidence directory: {}", evidenceDir, e);
-        }
+    @Autowired
+    public ImageStorageService(Cloudinary cloudinary) {
+        this.cloudinary = cloudinary;
     }
 
     /**
-     * Stores a Base64 image payload to disk and returns the HTTP URL.
+     * Stores a Base64 image payload PERMANENTLY to Cloudinary and returns the secure HTTPS URL.
+     * Guaranteed to survive ephemeral Render restarts.
      */
     public String storeEvidenceImage(String base64Image) {
         if (base64Image == null || base64Image.isEmpty()) {
@@ -57,29 +41,27 @@ public class ImageStorageService {
             String base64Data = parts.length > 1 ? parts[1] : parts[0];
 
             byte[] decodedBytes = java.util.Base64.getDecoder().decode(base64Data);
-            
-            // 📁 FILE SYSTEM SCALING FIX: Time-based partitioning
-            String datePartition = java.time.LocalDate.now().toString(); 
-            Path partitionPath = Paths.get(evidenceDir, datePartition);
-            
-            if (!Files.exists(partitionPath)) {
-                Files.createDirectories(partitionPath);
-            }
 
-            String fileName = UUID.randomUUID().toString() + ".jpg";
-            Path filePath = partitionPath.resolve(fileName);
-
-            try (FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
-                fos.write(decodedBytes);
-            }
-
-            log.info("💾 Saved partitioned evidence image to disk: {}/{}", datePartition, fileName);
+            String fileName = UUID.randomUUID().toString();
             
-            String fileUrlPath = datePartition + "/" + fileName;
-            return baseUrl.endsWith("/") ? baseUrl + fileUrlPath : baseUrl + "/" + fileUrlPath;
+            log.info("☁️ Uploading evidence image to Cloudinary... ({} bytes)", decodedBytes.length);
+
+            // 🔥 PERMANENT CLOUDINARY UPLOAD
+            Map uploadResult = cloudinary.uploader().upload(
+                    decodedBytes,
+                    ObjectUtils.asMap(
+                            "folder", "mpis/evidence",
+                            "public_id", fileName
+                    )
+            );
+
+            String secureUrl = (String) uploadResult.get("secure_url");
+            log.info("✅ Successfully saved permanent evidence image to Cloudinary: {}", secureUrl);
+            
+            return secureUrl;
 
         } catch (Exception e) {
-            log.error("💥 Failed to store evidence image locally", e);
+            log.error("💥 Failed to store evidence image to Cloudinary", e);
             return null;
         }
     }

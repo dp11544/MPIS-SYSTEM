@@ -743,7 +743,7 @@ const Alerts = () => {
                                                 </button>
 
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); if(alert.evidenceImagePath) setEvidenceModalImage(alert.evidenceImagePath); else toast.error('No evidence recorded'); }}
+                                                    onClick={(e) => { e.stopPropagation(); if(alert.evidenceImagePath) setEvidenceModalImage(alert); else toast.error('No evidence recorded'); }}
                                                     style={{
                                                         background: alert.evidenceImagePath ? 'linear-gradient(135deg, rgba(255,77,77,0.2), rgba(120,30,30,0.2))' : 'rgba(255,255,255,0.05)',
                                                         border: `1px solid ${alert.evidenceImagePath ? 'rgba(255,77,77,0.4)' : 'transparent'}`,
@@ -1145,7 +1145,7 @@ const Alerts = () => {
                                 Dismiss
                             </button>
                             <button 
-                                onClick={() => { if(selectedAlert.evidenceImagePath) setEvidenceModalImage(selectedAlert.evidenceImagePath); else toast.error('No evidence recorded'); }}
+                                onClick={() => { if(selectedAlert.evidenceImagePath) setEvidenceModalImage(selectedAlert); else toast.error('No evidence recorded'); }}
                                 disabled={!selectedAlert.evidenceImagePath}
                                 style={{
                                     padding: '12px 24px',
@@ -1254,22 +1254,66 @@ const Alerts = () => {
                             ><X size={18} /></button>
                         </div>
                         
-                        <img 
-                            src={buildImageUrl(evidenceModalImage)} 
-                            style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block' }} 
-                            alt="Alert Evidence" 
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.style.display = 'none';
-                                e.target.parentNode.innerHTML += `
-                                    <div style="padding: 60px; text-align: center; color: var(--text-secondary); background: #111;">
-                                        <div style="font-size: 3rem; margin-bottom: 20px; opacity: 0.5;">🗑️</div>
-                                        <h3 style="color: #ff4d4d; margin: 0 0 10px 0;">EVIDENCE EXPIRED</h3>
-                                        <p style="margin: 0; max-width: 300px; font-size: 0.85rem;">This evidence image was purged during the backend's ephemeral container cycle. Base64 data is no longer available.</p>
+                        <div style={{ position: 'relative' }}>
+                            <img 
+                                src={buildImageUrl(typeof evidenceModalImage === 'string' ? evidenceModalImage : evidenceModalImage?.evidenceImagePath)} 
+                                style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block' }} 
+                                alt="Alert Evidence" 
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.style.display = 'none';
+                                    e.target.parentNode.innerHTML += `
+                                        <div style="padding: 60px; text-align: center; color: var(--text-secondary); background: #111;">
+                                            <div style="font-size: 3rem; margin-bottom: 20px; opacity: 0.5;">🗑️</div>
+                                            <h3 style="color: #ff4d4d; margin: 0 0 10px 0;">EVIDENCE EXPIRED</h3>
+                                            <p style="margin: 0; max-width: 300px; font-size: 0.85rem;">This evidence image was purged during the backend's ephemeral container cycle. Base64 data is no longer available.</p>
+                                        </div>
+                                    `;
+                                }}
+                            />
+                            
+                            {typeof evidenceModalImage === 'object' && evidenceModalImage !== null && (
+                                <div style={{ 
+                                    position: 'absolute', bottom: 20, left: 20, right: 20, 
+                                    background: 'rgba(5, 10, 20, 0.85)', 
+                                    backdropFilter: 'blur(10px)',
+                                    border: '1px solid rgba(255,77,77,0.5)', 
+                                    borderRadius: '12px', padding: '15px 20px',
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+                                }}>
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                                            <Target size={16} color="#ff4d4d" />
+                                            <span style={{ color: '#ff4d4d', fontWeight: 'bold', letterSpacing: '1px', fontSize: '0.85rem' }}>SUBJECT IDENTIFIED</span>
+                                        </div>
+                                        <h2 style={{ margin: 0, color: 'white', fontSize: '1.4rem' }}>{evidenceModalImage.personName || "UNKNOWN"}</h2>
+                                        <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                                            ID: {evidenceModalImage.personId}
+                                        </p>
                                     </div>
-                                `;
-                            }}
-                        />
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end', marginBottom: '5px' }}>
+                                            <Clock size={14} color="#007bff" />
+                                            <span style={{ color: '#007bff', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                                {new Date(evidenceModalImage.detectedAt).toLocaleString()}
+                                            </span>
+                                        </div>
+                                        <div style={{
+                                            background: 'rgba(255,152,0,0.2)', color: '#ff9800', 
+                                            padding: '4px 10px', borderRadius: '6px', 
+                                            display: 'inline-block', fontWeight: 'bold',
+                                            border: '1px solid rgba(255,152,0,0.5)'
+                                        }}>
+                                            MATCH: {(evidenceModalImage.similarity * 100).toFixed(1)}%
+                                        </div>
+                                        <div style={{ marginTop: '5px', color: '#64ffda', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                                            SOURCE: {evidenceModalImage.cameraId}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

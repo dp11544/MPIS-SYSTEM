@@ -1254,7 +1254,22 @@ const Alerts = () => {
                             ><X size={18} /></button>
                         </div>
                         
-                        <img src={buildImageUrl(evidenceModalImage)} style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block' }} alt="Alert Evidence" />
+                        <img 
+                            src={buildImageUrl(evidenceModalImage)} 
+                            style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block' }} 
+                            alt="Alert Evidence" 
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.style.display = 'none';
+                                e.target.parentNode.innerHTML += `
+                                    <div style="padding: 60px; text-align: center; color: var(--text-secondary); background: #111;">
+                                        <div style="font-size: 3rem; margin-bottom: 20px; opacity: 0.5;">🗑️</div>
+                                        <h3 style="color: #ff4d4d; margin: 0 0 10px 0;">EVIDENCE EXPIRED</h3>
+                                        <p style="margin: 0; max-width: 300px; font-size: 0.85rem;">This evidence image was purged during the backend's ephemeral container cycle. Base64 data is no longer available.</p>
+                                    </div>
+                                `;
+                            }}
+                        />
                     </div>
                 </div>
             )}
